@@ -1,0 +1,53 @@
+{
+  "expo": {
+    "name": "Dietitians Assistant",
+    "slug": "dietitians-assistant",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "dietitianapp",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+
+    "icon": "./assets/DA_logo.png",
+
+    "splash": {
+      "image": "./assets/DA_logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+
+    "ios": {
+      "supportsTablet": true
+    },
+
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/DA_logo.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true
+    },
+
+    "web": {
+      "favicon": "./assets/DA_logo.png"
+    },
+
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/DA_logo.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff"
+        }
+      ]
+    ],
+
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}
