@@ -8,15 +8,14 @@ create DATABASE dietitian_assistant; USE dietitian_assistant;
 CREATE TABLE Client (
     ClientID VARCHAR(36) PRIMARY KEY, -- UUID
     Email VARCHAR(64) UNIQUE NOT NULL,
-    Password VARCHAR(60) NOT NULL,
+    Password VARCHAR(60) NOT NULL, -- bcrypt
     Name VARCHAR(64) NOT NULL,
     DOB VARCHAR(64),
     Sex VARCHAR(10) NOT NULL,
     AssignedDietitianID VARCHAR(36) NOT NULL,
-    AssignedMealID VARCHAR(36),
+    -- AssignedMealID VARCHAR(36), Bunun kaldırılmasıyla birden fazla mealplan'i olabilir FAKAT index eklemesi yapmak daha doğrudur Client,Date şeklinde
     CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     IsActive BOOLEAN DEFAULT TRUE, -- Başlangıçta kurulurken hesap aktif sayılır, eğer kapatıcaksa burası false olucak. User silmek diye bir QUERY olmıcak ASLA
-    -- SELECT * FROM Client WHERE Email = ?  AND Password = ?  AND IsActive = TRUE yapıcaz
     
     -- Indexes
     INDEX idx_client_dietitian (AssignedDietitianID)  -- Diyetisyen o client'ı görüntülemek isterken
@@ -27,9 +26,10 @@ CREATE TABLE Medical_Details(
 	ClientID VARCHAR(36), -- UUID
     MedicalDetailID VARCHAR(36),
     MedicalData VARCHAR(64) NOT NULL,
+    RecordedBy VARCHAR(64) NOT NULL,
     
     CreatedAt DATE NOT NULL,
-    Importance ENUM('MIN','MID','MAX') NOT NULL,  -- Mesela diyabet MAX tier çünkü diyetleri hazırlanırken çok dikkat edilmesi lazım o yüzden önem'i yüksek.
+    -- Importance ENUM('MIN','MID','MAX'),  -- Mesela diyabet MAX tier çünkü diyetleri hazırlanırken çok dikkat edilmesi lazım o yüzden önem'i yüksek.
     
     PRIMARY KEY (ClientID, MedicalDetailID),
     FOREIGN KEY (ClientID) REFERENCES Client(ClientID) ON DELETE CASCADE
@@ -78,12 +78,12 @@ CREATE TABLE DailyMealPlan(
     PlanDate DATE, -- 07/12/2025
     CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     
-    PRIMARY KEY (MealPlanID,ClientID,PlanDate),
+    PRIMARY KEY (ClientID,PlanDate),
     FOREIGN KEY (ClientID) REFERENCES Client(ClientID) ON DELETE CASCADE,
     
     -- Indexes
-    INDEX idx_plan_client (ClientID)
-		-- INDEX idx_plan_date (PlanDate)  Daha sonradan gerekli olabilir sorgu türlerimize göre
+    INDEX idx_plan_client (ClientID),
+	INDEX idx_plan_date (ClientID,PlanDate)  -- AssignedMealID kaldırıldığı için eklenilmesi gereklidir
 );
 
 
@@ -91,7 +91,6 @@ CREATE TABLE DailyMealPlan(
 CREATE TABLE Meal(
 	MealID VARCHAR(36),
     MealPlanID VARCHAR(36),
-    
     MealStart TIME,  -- 09:00
     MealEnd TIME,  -- 11:00
     
@@ -128,7 +127,8 @@ CREATE TABLE MealItem(
     canChange BOOLEAN NOT NULL,  -- LLM Kullanım izni
     isFollowed BOOLEAN, -- Kaçırdı (0), Değiştirdi(0), Uyum sağladı (1) Eğer NULL ise daha feedback verilmedi
     ChangedItem JSON, -- Dropdown menuden itemlar seçilecek buraya "ID: Miktar"  şeklinde yazılacak böylece çoklu şekilde tutabilicez, gram bazında miktar [Kaçırdı ise burası boş kalıcak]
-    -- isFollowed / ChangedItem kısımları için buraya onlar için update atıcaz
+    -- isFollowed / ChangedItem kısımları için buraya onlar için update atıcaz. LLM'in önerisi de changedItem'a gelicek
+    isLLM BOOLEAN,
     
     PRIMARY KEY (ItemID, MealID),
     FOREIGN KEY (ItemID) REFERENCES Item(ItemID),
@@ -155,6 +155,24 @@ CREATE TABLE LoginAttempts (
     INDEX idx_login_ip_time (IPAddress, AttemptTime)  -- Bu IP addresi ile son 15/40 dk da kaç kere deneme yaptı ? 
     -- Backend'de eğer 3'ten fazla yanlış denemeyse o IP adresine bloke edicez 30 dk
 );
+
+CREATE TABLE ClientProgressSnapshot (
+    SnapshotID    CHAR(36) PRIMARY KEY,
+    ClientID      CHAR(36) NOT NULL,
+
+    Weight        DECIMAL(5,2),
+    BodyFat       DECIMAL(4,1),
+    AdherenceRate DECIMAL(5,2),   -- e.g. 87.50 (%)
+
+    ProgressDate DATE NOT NULL,
+
+    CONSTRAINT fk_snapshot_client
+        FOREIGN KEY (ClientID) REFERENCES Client(ClientID) ON DELETE CASCADE,
+
+	-- Indexes
+    INDEX idx_snapshot_client_date (ClientID, ProgressDate)
+);
+
 
 
 
