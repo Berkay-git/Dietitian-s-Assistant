@@ -8,10 +8,10 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
 
-    "icon": "./assets/DA_logo.png",
+    "icon": "../assets/images/DA_logo.png",
 
     "splash": {
-      "image": "./assets/DA_logo.png",
+      "image": "../assets/images/DA_logo.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -22,14 +22,14 @@
 
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/DA_logo.png",
+        "foregroundImage": "../assets/images/DA_logo.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true
     },
 
     "web": {
-      "favicon": "./assets/DA_logo.png"
+      "favicon": "../assets/images/DA_logo.png"
     },
 
     "plugins": [
@@ -37,7 +37,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/DA_logo.png",
+          "image": "../assets/images/DA_logo.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
