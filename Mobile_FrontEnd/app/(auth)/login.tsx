@@ -11,15 +11,19 @@ export default function LoginScreen() {
   const { login } = useAuth();
 
   const handleLogin = async () => {
+
+    // Eğer boş ise uyarı ver
     if (!email || !password) {
       Alert.alert("Hata", "Email ve şifre alanlarını doldurunuz");
       return;
     }
 
-    const success = await login(email, password);
+    // Giriş yapmayı dene
+    const success = await login(email, password, 'client');
 
+    // Giriş başarısız olursa uyarı ver eğer başarılıysa ana sayfaya (Yani Meals Page'e) yönlendir
     if (!success) {
-      Alert.alert("Hata", "Giriş başarısız");
+      Alert.alert("Hata", "Geçersiz email veya şifre");
     } else {
       router.replace("/(tabs)/meals");
     }

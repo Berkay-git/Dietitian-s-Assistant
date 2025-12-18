@@ -72,7 +72,7 @@ CREATE TABLE Physical_Details (
 
 -- Tüm o günlük planı 
 CREATE TABLE DailyMealPlan(
-	MealPlanID VARCHAR(36), -- UUID
+	MealPlanID VARCHAR(36) UNIQUE NOT NULL, -- UUID
     ClientID VARCHAR(36),
     
     PlanDate DATE, -- 07/12/2025
@@ -147,7 +147,7 @@ CREATE TABLE LoginAttempts (
 	AttemptID VARCHAR(36) PRIMARY KEY, -- UUID
     Email VARCHAR(64),
     AttemptTime TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    IPAddress VARCHAR(45),
+    IPAddress VARCHAR(64),
     IsSuccess BOOLEAN DEFAULT FALSE,
     
 	-- Indexes
@@ -174,5 +174,5 @@ CREATE TABLE ClientProgressSnapshot (
 );
 
 
-
-
+SELECT * FROM loginattempts;
+TRUNCATE TABLE loginattempts;

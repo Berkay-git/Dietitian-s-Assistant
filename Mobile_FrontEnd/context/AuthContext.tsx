@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, ReactNode } from 'react';
 
 interface AuthContextType {
   isLoggedIn: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string, userType?: 'dietitian' | 'client') => Promise<boolean>;
   logout: () => void;
   userEmail: string | null;
 }
@@ -13,20 +13,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (email: string, password: string, userType?: 'dietitian' | 'client'): Promise<boolean> => {
     try {
-    //   // Backend'e istek gönder
-    //   const response = await fetch("http://your-backend-url/login", {
-    //     method: "POST",
-    //     headers: {
-    //       "Content-Type": "application/json",
-    //     },
-    //     body: JSON.stringify({ email, password }),
-    //   });
+      // Backend'e istek gönder
+      const response = await fetch("http://192.168.110.70:5000/api/dietitian/auth", {
+      method: "POST",
+      headers: {
+      "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ 
+        email, 
+        password,
+        user_type: userType // 'dietitian', 'client', 'None'
+      }),
+    });
 
-    //   const data = await response.json();
+    const data = await response.json();
 
-      if (1) { //response.ok
+      // Giriş başarılıysa durumu güncelle ve sayfaya yönlendirmeye izin ver
+      if (response.ok) { 
         setIsLoggedIn(true);
         setUserEmail(email);
         return true;
