@@ -16,9 +16,9 @@ function AuthGate() {
     return <Redirect href="/(auth)/login" />;
   }
 
-  if (isLoggedIn && inAuthGroup) {
-    //return <Redirect href="/(tabs)/meals" />;
-  }
+  // if (isLoggedIn && inAuthGroup) {
+  //   return <Redirect href="/(tabs)/meals" />;
+  // }
 
   return <Slot />;
 }
