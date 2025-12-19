@@ -27,7 +27,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setLoading(true);
     try {
       // API call to backend
-      const response = await fetch('http://10.143.19.78:5000/api/dietitian/auth', {
+      const response = await fetch('http://10.0.2.2:5000/api/dietitian/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password, user_type: userType })

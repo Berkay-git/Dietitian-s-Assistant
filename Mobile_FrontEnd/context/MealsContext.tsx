@@ -56,7 +56,7 @@ export const MealsProvider = ({ children }: { children: ReactNode }) => {
   const [error, setError] = useState<string | null>(null);
   const [lastFetchParams, setLastFetchParams] = useState<{ clientId: string; planDate?: string } | null>(null);
 
-  const API_URL = 'http://10.143.19.78:5000'; // Backend IP'nizi buraya yazın
+  const API_URL = 'http://10.0.2.2:5000'; // Backend IP'nizi buraya yazın
 
   const fetchMealPlan = async (clientId: string, planDate?: string) => {
     setLoading(true);
