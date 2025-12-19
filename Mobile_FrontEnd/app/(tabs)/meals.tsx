@@ -5,6 +5,10 @@ import MealDetailModal from '../../components/common/MealCardModal';
 import { mealsStyles } from '../../styles/screens/MealsPageStyles';
 import { useMeals } from '../../context/MealsContext';
 import { useAuth } from '../../context/AuthContext';
+import { calculateDailySummary } from "../../components/common/calculator";
+import CalorieSummary from "../../components/common/CalorieSummary";
+
+
 
 export default function Meals() {
   const [selectedMeal, setSelectedMeal] = useState<any>(null);
@@ -47,24 +51,6 @@ export default function Meals() {
     // TODO: Implement feedback logic
   };
 
-  // Calculate remaining macros
-  const getRemainingMacros = () => {
-    if (!dailyMealPlan) return { calories: 0, protein: 0, carb: 0, fat: 0 };
-  
-    const dailyTarget = {
-      calories: dailyMealPlan.dailyTotals.calories,
-      protein: dailyMealPlan.dailyTotals.protein,
-      carb: dailyMealPlan.dailyTotals.carb,
-      fat: dailyMealPlan.dailyTotals.fat
-    };
-
-    return { //Rastgele 100 ve 10 var
-      calories:dailyTarget.calories - 100, // Feedbacki verilen bir item olunca burayı updatele
-      protein:dailyTarget.protein - 10 ,
-      carb:dailyTarget.carb - 10,
-      fat:dailyTarget.fat - 10   // Feedbacki verilen bir item olunca burayı updatele
-    };
-  };
 
   if (loading && !dailyMealPlan) {
     return (
@@ -91,19 +77,33 @@ export default function Meals() {
     );
   }
 
-  const remaining = getRemainingMacros();
+  const rawSummary = calculateDailySummary(
+    dailyMealPlan.meals,
+    dailyMealPlan.dailyTotals
+  );
+
+  const summary = {
+    calories: {
+      total: rawSummary.calories.target,  
+      consumed: rawSummary.calories.consumed,
+      remaining: rawSummary.calories.remaining,
+    },
+    macros: rawSummary.macros,
+  };
+
 
   return (
     <View style={mealsStyles.container}>
       {/* Sabit Header */}
-      <View style={mealsStyles.macroBox}>
-        <Text style={mealsStyles.macroTitle}>
-          {remaining.calories} Remaining
-        </Text>
-        <Text style={mealsStyles.macroSubtitle}>
-          {remaining.carb}g Carbs • {remaining.protein}g Protein • {remaining.fat}g Fat
-        </Text>
-      </View>
+      
+      <CalorieSummary
+        calories={summary.calories}
+        macros={{
+          carb: summary.macros.carb,
+          protein: summary.macros.protein,
+          fat: summary.macros.fat,
+        }}
+      />
 
       {/* Scrollable Meal Cards */}
       <ScrollView 
