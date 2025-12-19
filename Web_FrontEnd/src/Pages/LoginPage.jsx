@@ -3,162 +3,139 @@ import { useNavigate } from 'react-router-dom';
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  
+  // State for form fields
+  const [formData, setFormData] = useState({ email: '', password: '' });
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = () => {
-    
-    console.log("Login Attempt:", email);
-    
-    
-    navigate('/dashboard', { replace: true });
+  const handleChange = (e) => {   // sets the form data
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleRegisterRedirect = () => {
-    navigate('/register');
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setIsLoading(true);
+
+    try {
+      // 1. Call your Flask Backend
+      const response = await fetch('http://localhost:5000/api/dietitian/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          user_type: 'dietitian' // We hardcode this for the Web Portal
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // 2. SUCCESS: Save token & user info to LocalStorage
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user_id', data.user.id);
+        localStorage.setItem('user_name', data.user.name);
+
+        // 3. Navigate to Dashboard
+        navigate('/dashboard');
+      } else {
+        // 4. ERROR: Show message from backend
+        setError(data.error || 'Login failed');
+      }
+    } catch (err) {
+      console.error(err);
+      setError('Server error. Is the backend running?');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const styles = {
+    container: {
+      minHeight: '100vh',
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: '#FFF9C4', // Yellowish background
+      fontFamily: 'Arial, sans-serif'
+    },
+    card: {
+      backgroundColor: 'white',
+      padding: '40px',
+      borderRadius: '15px',
+      boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+      width: '100%',
+      maxWidth: '400px',
+      textAlign: 'center'
+    },
+    title: { color: '#FBC02D', marginBottom: '10px', fontSize: '28px' },
+    subtitle: { color: '#666', marginBottom: '30px' },
+    inputGroup: { marginBottom: '15px', textAlign: 'left' },
+    label: { display: 'block', marginBottom: '5px', fontWeight: 'bold', color: '#555', fontSize: '14px' },
+    input: {
+      width: '100%', padding: '12px', border: '1px solid #ddd',
+      borderRadius: '8px', boxSizing: 'border-box', fontSize: '16px'
+    },
+    button: {
+      width: '100%', padding: '14px', backgroundColor: '#FBC02D', color: 'white',
+      border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: 'bold',
+      cursor: 'pointer', marginTop: '10px', transition: 'background 0.3s'
+    },
+    errorBox: {
+      backgroundColor: '#ffebee', color: '#c62828', padding: '10px',
+      borderRadius: '6px', marginBottom: '20px', fontSize: '14px', border: '1px solid #ffcdd2'
+    },
+    linkText: { marginTop: '20px', fontSize: '14px', color: '#666' },
+    link: { color: '#FBC02D', cursor: 'pointer', fontWeight: 'bold' }
   };
 
   return (
-    <div style={styles.mainContainer}>
-      {/* İçeriği ortalayan kapsayıcı */}
-      <div style={styles.contentContainer}>
-        
-        {/* Başlıklar */}
-        <h1 style={styles.title}>Welcome To Dietitian's Assistant</h1>
-        <p style={styles.subtitle}>Please log in to your account</p>
+    <div style={styles.container}>
+      <div style={styles.card}>
+        <h1 style={styles.title}>Welcome Back</h1>
+        <p style={styles.subtitle}>Sign in to manage your clients</p>
 
-        {/* Form Alanı */}
-        <div style={styles.formArea}>
-            
-            {/* Email Input */}
-            <div style={styles.inputWrapper}>
-                <input
-                    style={styles.input}
-                    type="email"
-                    placeholder="Email Address"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                />
-            </div>
+        {error && <div style={styles.errorBox}>{error}</div>}
 
-            {/* Password Input */}
-            <div style={styles.inputWrapper}>
-                <input
-                    style={styles.input}
-                    type="password"
-                    placeholder="Password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                />
-            </div>
+        <form onSubmit={handleSubmit}>
+          <div style={styles.inputGroup}>
+            <label style={styles.label}>Email Address</label>
+            <input 
+              type="email" 
+              name="email" 
+              value={formData.email} 
+              onChange={handleChange} 
+              placeholder="dietitian@example.com"
+              required 
+              style={styles.input}
+            />
+          </div>
 
-            {/* Login Button */}
-            <button style={styles.loginButton} onClick={handleLogin}>
-                LOG IN
-            </button>
+          <div style={styles.inputGroup}>
+            <label style={styles.label}>Password</label>
+            <input 
+              type="password" 
+              name="password" 
+              value={formData.password} 
+              onChange={handleChange} 
+              placeholder="Enter your password"
+              required 
+              style={styles.input}
+            />
+          </div>
 
-            {/* Register Link */}
-            <div style={styles.registerContainer}>
-                <span style={styles.registerText}>Don't have an account?</span>
-                <button style={styles.registerLink} onClick={handleRegisterRedirect}>
-                    Sign Up
-                </button>
-            </div>
+          <button type="submit" style={styles.button} disabled={isLoading}>
+            {isLoading ? 'Signing In...' : 'Sign In'}
+          </button>
+        </form>
 
-        </div>
+        <p style={styles.linkText}>
+          Don't have an account? 
+          <span style={styles.link} onClick={() => navigate('/register')}> Create one</span>
+        </p>
       </div>
     </div>
   );
 }
-
-const styles = {
-  mainContainer: {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center', 
-    minHeight: '100vh',
-    backgroundColor: '#f5f5f5',
-    padding: '20px',
-    fontFamily: 'Arial, sans-serif'
-  },
-  contentContainer: {
-    width: '100%',
-    maxWidth: '450px', 
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    textAlign: 'center'
-  },
-  title: {
-    fontSize: '28px',
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: '10px',
-    marginTop: 0
-  },
-  subtitle: {
-    fontSize: '16px',
-    color: '#666',
-    marginBottom: '40px',
-    marginTop: 0
-  },
-  formArea: {
-    width: '100%',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center'
-  },
-  inputWrapper: {
-    width: '100%',
-    marginBottom: '15px',
-    backgroundColor: '#fff',
-    borderRadius: '10px',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.1)', 
-  },
-  input: {
-    width: '100%',
-    height: '50px', 
-    padding: '0 15px',
-    fontSize: '16px',
-    color: '#333',
-    border: 'none',
-    borderRadius: '10px',
-    outline: 'none',
-    boxSizing: 'border-box',
-    backgroundColor: 'transparent'
-  },
-  loginButton: {
-    width: '100%',
-    backgroundColor: '#007AFF',
-    padding: '15px',
-    borderRadius: '10px',
-    border: 'none',
-    color: '#fff',
-    fontSize: '18px',
-    fontWeight: 'bold',
-    cursor: 'pointer',
-    marginTop: '10px',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-    transition: 'background-color 0.3s'
-  },
-  registerContainer: {
-    marginTop: '30px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '5px'
-  },
-  registerText: {
-    color: '#666',
-    fontSize: '14px'
-  },
-  registerLink: {
-    background: 'none',
-    border: 'none',
-    color: '#007AFF',
-    fontWeight: 'bold',
-    fontSize: '14px',
-    cursor: 'pointer',
-    padding: 0
-  }
-};

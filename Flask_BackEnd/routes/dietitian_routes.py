@@ -143,3 +143,33 @@ def getAvailableDates():
     except Exception as e:
         print(f"Error in getAvailableDates: {str(e)}")
         return jsonify({'error': 'Server error'}), 500
+    
+
+
+@dietitian_bp.route('/register', methods=['POST'])
+def register():
+    try:
+        data = request.get_json()
+        
+        # Validate data
+        if not data or not all(k in data for k in ('email', 'password', 'name')):
+            return jsonify({'error': 'Email, şifre ve isim gereklidir'}), 400
+            
+        # Call Service
+        success, message, new_dietitian = AuthService.register(
+            email=data['email'],
+            password=data['password'],
+            name=data['name']
+        )
+        
+        if success:
+            return jsonify({
+                'message': message,
+                'dietitian': new_dietitian.to_dict() # This uses the method we added to_dict, in authService
+            }), 201
+        else:
+            return jsonify({'error': message}), 400
+            
+    except Exception as e:
+        print(f"Register Error: {str(e)}")
+        return jsonify({'error': 'Sunucu hatası'}), 500

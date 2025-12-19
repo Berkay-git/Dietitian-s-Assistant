@@ -1,212 +1,207 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 export default function Register() {
   const navigate = useNavigate();
+  
+  const [formData, setFormData] = useState({ name: '', email: '', password: '', confirmPassword: '' });
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Form verilerini tutacak state'ler
-  const [name, setName] = useState('');
-  const [surname, setSurname] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  // VALIDATION STATE
+  const [validations, setValidations] = useState({
+    length: false,
+    upper: false,
+    lower: false,
+    number: false,
+    match: false,
+    noRestrictedChars: true // True means "Good" (doesn't contain bad chars)
+  });
 
-  // Kayıt Ol butonuna basınca çalışacak fonksiyon
-  const handleRegister = () => {
-    // 1. Boş Alan Kontrolü
-    if (!name || !surname || !email || !password || !confirmPassword) {
-      alert("Please fill in all fields.");
-      return;
-    }
+  // Handle Input Change
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
 
-    // 2. Şifre Eşleşme Kontrolü
-    if (password !== confirmPassword) {
-      alert("Passwords do not match!");
-      return;
-    }
-
-    // 3. Şifre Güvenlik Kontrolü
-    const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[.,!@#$%^&*]).{8,}$/;
+  // REAL-TIME CHECKER
+  useEffect(() => {
+    const { password, confirmPassword } = formData;
     
-    if (!passwordRegex.test(password)) {
-      alert("Password must be at least 8 characters long, contain 1 uppercase letter, 1 number, and 1 special character (.,!@# etc).");
-      return;
-    }
+    setValidations({
+      length: password.length >= 8,
+      upper: /[A-Z]/.test(password),
+      lower: /[a-z]/.test(password),
+      number: /\d/.test(password),
+      match: password !== '' && password === confirmPassword,
+      // Check for '*' and 'SELECT' (case insensitive for SELECT)
+      noRestrictedChars: !password.includes('*') && !password.toUpperCase().includes('SELECT')
+    });
+  }, [formData.password, formData.confirmPassword]);
 
-    // 4. Email Kullanımda mı Kontrolü (Simülasyon)
-    if (email === "test@gmail.com") {
-      alert("This email is already in use!");
-      return;
-    }
+  // Check if form is valid to enable button
+  const isFormValid = Object.values(validations).every(Boolean) && formData.name && formData.email;
 
-    // Her şey yolundaysa
-    alert("Registration Successful! Redirecting to login...");
-    
-    // İşlem başarılıysa giriş sayfasına geri gönder
-    navigate('/'); 
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!isFormValid) return; // Double check
+
+    setError('');
+    setIsLoading(true);
+
+    try {
+      const response = await fetch('http://localhost:5000/api/dietitian/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          password: formData.password
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert("Registration Successful! Please login.");
+        navigate('/'); 
+      } else {
+        setError(data.error || 'Registration failed');
+      }
+    } catch (err) {
+      setError('Server error. Is the backend running?');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Helper component for the requirement line
+  const Requirement = ({ met, text }) => (
+    <div style={{ 
+      display: 'flex', 
+      alignItems: 'center', 
+      gap: '8px', 
+      color: met ? '#2e7d32' : '#d32f2f', // Green or Red
+      fontSize: '13px',
+      marginBottom: '4px',
+      transition: 'color 0.3s'
+    }}>
+      <span>{met ? '✓' : '✗'}</span>
+      <span style={{ textDecoration: met ? 'none' : 'none', opacity: met ? 1 : 0.7 }}>{text}</span>
+    </div>
+  );
+
+  const styles = {
+    container: {
+      minHeight: '100vh',
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: '#FFF9C4', 
+      fontFamily: 'Arial, sans-serif'
+    },
+    card: {
+      backgroundColor: 'white',
+      padding: '40px',
+      borderRadius: '15px',
+      boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+      width: '100%',
+      maxWidth: '450px', // Slightly wider for validation text
+      textAlign: 'center'
+    },
+    title: { color: '#FBC02D', marginBottom: '10px', fontSize: '28px' },
+    subtitle: { color: '#666', marginBottom: '30px' },
+    inputGroup: { marginBottom: '15px', textAlign: 'left' },
+    label: { display: 'block', marginBottom: '5px', fontWeight: 'bold', color: '#555', fontSize: '14px' },
+    input: {
+      width: '100%', padding: '12px', border: '1px solid #ddd',
+      borderRadius: '8px', boxSizing: 'border-box', fontSize: '16px'
+    },
+    button: {
+      width: '100%', padding: '14px', backgroundColor: '#FBC02D', color: 'white',
+      border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: 'bold',
+      cursor: isFormValid ? 'pointer' : 'not-allowed', 
+      marginTop: '10px', transition: 'background 0.3s',
+      opacity: isFormValid ? 1 : 0.5 // Fade out if invalid
+    },
+    errorBox: {
+      backgroundColor: '#ffebee', color: '#c62828', padding: '10px',
+      borderRadius: '6px', marginBottom: '20px', fontSize: '14px', border: '1px solid #ffcdd2'
+    },
+    validationBox: {
+      textAlign: 'left',
+      backgroundColor: '#f9f9f9',
+      padding: '15px',
+      borderRadius: '8px',
+      marginTop: '10px',
+      border: '1px solid #eee'
+    },
+    linkText: { marginTop: '20px', fontSize: '14px', color: '#666' },
+    link: { color: '#FBC02D', cursor: 'pointer', fontWeight: 'bold' }
   };
 
   return (
-    <div style={styles.mainContainer}>
-      <div style={styles.formCard}>
-        
-        {/* Başlıklar */}
-        <h1 style={styles.title}>New Dietitian Registration</h1>
-        <p style={styles.subtitle}>Join us to manage your patients better</p>
+    <div style={styles.container}>
+      <div style={styles.card}>
+        <h1 style={styles.title}>Join Us</h1>
+        <p style={styles.subtitle}>Create your Dietitian Account</p>
 
-        <div style={styles.formContent}>
-            
-            {/* İsim */}
-            <div style={styles.inputWrapper}>
-                <input
-                    style={styles.input}
-                    placeholder="Dietitian's Name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                />
-            </div>
+        {error && <div style={styles.errorBox}>{error}</div>}
 
-            {/* Soyisim */}
-            <div style={styles.inputWrapper}>
-                <input
-                    style={styles.input}
-                    placeholder="Dietitian's Surname"
-                    value={surname}
-                    onChange={(e) => setSurname(e.target.value)}
-                />
-            </div>
+        <form onSubmit={handleSubmit}>
+          <div style={styles.inputGroup}>
+            <label style={styles.label}>Full Name</label>
+            <input 
+              type="text" name="name" value={formData.name} onChange={handleChange} 
+              placeholder="Dr. John Doe" required style={styles.input}
+            />
+          </div>
 
-            {/* Email */}
-            <div style={styles.inputWrapper}>
-                <input
-                    style={styles.input}
-                    type="email"
-                    placeholder="Email Address"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                />
-            </div>
+          <div style={styles.inputGroup}>
+            <label style={styles.label}>Email Address</label>
+            <input 
+              type="email" name="email" value={formData.email} onChange={handleChange} 
+              placeholder="dietitian@example.com" required style={styles.input}
+            />
+          </div>
 
-            {/* Şifre */}
-            <div style={styles.inputWrapper}>
-                <input
-                    style={styles.input}
-                    type="password"
-                    placeholder="Password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                />
-            </div>
+          <div style={styles.inputGroup}>
+            <label style={styles.label}>Password</label>
+            <input 
+              type="password" name="password" value={formData.password} onChange={handleChange} 
+              required style={styles.input}
+            />
+          </div>
 
-            {/* Şifre Tekrar */}
-            <div style={styles.inputWrapper}>
-                <input
-                    style={styles.input}
-                    type="password"
-                    placeholder="Confirm Password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                />
-            </div>
+          <div style={styles.inputGroup}>
+            <label style={styles.label}>Confirm Password</label>
+            <input 
+              type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} 
+              required style={styles.input}
+            />
+          </div>
 
-            {/* Kayıt Butonu */}
-            <button style={styles.registerButton} onClick={handleRegister}>
-                REGISTER
-            </button>
+          {/* REAL-TIME VALIDATION BOX */}
+          <div style={styles.validationBox}>
+             <strong style={{fontSize:'12px', color:'#555', display:'block', marginBottom:'8px'}}>Password Requirements:</strong>
+             <Requirement met={validations.length} text="At least 8 characters" />
+             <Requirement met={validations.upper} text="At least one uppercase letter (A-Z)" />
+             <Requirement met={validations.lower} text="At least one lowercase letter (a-z)" />
+             <Requirement met={validations.number} text="At least one number (0-9)" />
+             <Requirement met={validations.noRestrictedChars} text="Cannot contain '*' or 'SELECT'" />
+             <div style={{borderTop:'1px solid #ddd', margin:'5px 0'}}></div>
+             <Requirement met={validations.match} text="Passwords match" />
+          </div>
 
-            {/* Geri Dön Linki */}
-            <div style={styles.loginLinkContainer}>
-                <span style={styles.loginLinkText}>Already have an account? </span>
-                <button style={styles.loginLink} onClick={() => navigate('/')}>
-                    Log In
-                </button>
-            </div>
+          <button type="submit" style={styles.button} disabled={!isFormValid || isLoading}>
+            {isLoading ? 'Creating Account...' : 'Register'}
+          </button>
+        </form>
 
-        </div>
+        <p style={styles.linkText}>
+          Already have an account? 
+          <span style={styles.link} onClick={() => navigate('/')}> Sign In</span>
+        </p>
       </div>
     </div>
   );
 }
-
-const styles = {
-  mainContainer: {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    minHeight: '100vh',
-    backgroundColor: '#f5f5f5',
-    padding: '20px',
-    fontFamily: 'Arial, sans-serif'
-  },
-  formCard: {
-    width: '100%',
-    maxWidth: '450px',
-    backgroundColor: '#fff',
-    borderRadius: '15px',
-    padding: '30px',
-    boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
-    textAlign: 'center'
-  },
-  title: {
-    fontSize: '26px',
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: '5px',
-    marginTop: 0
-  },
-  subtitle: {
-    fontSize: '16px',
-    color: '#666',
-    marginBottom: '30px',
-    marginTop: 0
-  },
-  formContent: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '15px'
-  },
-  inputWrapper: {
-    width: '100%'
-  },
-  input: {
-    width: '100%',
-    padding: '12px 15px',
-    fontSize: '16px',
-    color: '#333',
-    borderRadius: '10px',
-    border: '1px solid #ddd',
-    backgroundColor: '#fff',
-    outline: 'none',
-    boxSizing: 'border-box'
-  },
-  registerButton: {
-    width: '100%',
-    backgroundColor: '#28a745', 
-    padding: '15px',
-    borderRadius: '10px',
-    border: 'none',
-    color: '#fff',
-    fontSize: '18px',
-    fontWeight: 'bold',
-    cursor: 'pointer',
-    marginTop: '10px',
-    transition: 'background-color 0.3s'
-  },
-  loginLinkContainer: {
-    marginTop: '20px',
-    fontSize: '14px',
-    color: '#666'
-  },
-  loginLinkText: {
-    color: '#666'
-  },
-  loginLink: {
-    background: 'none',
-    border: 'none',
-    color: '#007AFF',
-    fontWeight: 'bold',
-    cursor: 'pointer',
-    padding: 0,
-    fontSize: '14px'
-  }
-};

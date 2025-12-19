@@ -22,6 +22,16 @@ class Client(db.Model):
     daily_meal_plans = db.relationship('DailyMealPlan', backref='client', cascade='all, delete-orphan')
     progress_snapshots = db.relationship('ClientProgressSnapshot', backref='client', cascade='all, delete-orphan')
 
+    def to_dict(self):
+        return {
+            'id': self.ClientID,
+            'name': self.Name,
+            'email': self.Email,
+            'gender': self.Sex,
+            'dob': self.DOB,
+            'status': 'Active' if self.IsActive else 'Inactive'
+        }
+
 class MedicalDetails(db.Model):
     __tablename__ = 'Medical_Details'
     
@@ -46,6 +56,14 @@ class Dietitian(db.Model):
     
     # Relationships
     physical_details = db.relationship('PhysicalDetails', backref='dietitian', lazy="selectin")
+
+    def to_dict(self):
+        return {
+            'id': self.DietitianID,
+            'name': self.Name,
+            'email': self.Email,
+            'type': self.SubscriptionType
+        }
 
 class PhysicalDetails(db.Model):
     __tablename__ = 'Physical_Details'
@@ -113,7 +131,7 @@ class LoginAttempts(db.Model):
     __tablename__ = 'LoginAttempts'
     
     AttemptID = db.Column(db.String(36), primary_key=True)
-    Email = db.Column(db.String(64))
+    Email = db.Column(db.String(64))    # review email
     AttemptTime = db.Column(db.TIMESTAMP, default=datetime.utcnow)
     IPAddress = db.Column(db.String(64))
     IsSuccess = db.Column(db.Boolean, default=False)
