@@ -257,7 +257,7 @@ class AuthService:
             hashed_email = AuthService.hash_email(clean_email)
             
             # Email zaten kayıtlı mı kontrol et
-            existing_dietitian = Dietitian.query.filter_by(email_hash=hashed_email).first()
+            existing_dietitian = Dietitian.query.filter_by(Email=hashed_email).first()
             if existing_dietitian:
                 return False, "Bu email zaten kayıtlı", None
             
@@ -266,10 +266,12 @@ class AuthService:
             
             # Yeni diyetisyen oluştur
             new_dietitian = Dietitian(
-                email_hash=hashed_email,
-                password_hash=hashed_password,
-                name=name.strip()
-            )
+                DietitianID=str(uuid.uuid4()), # dietitian ID here 
+                Email=hashed_email,     # Note: Your model says 'Email', verify if you store hash or plain
+                Password=hashed_password, 
+                Name=name.strip(),
+                IsActive=True
+    )
             
             db.session.add(new_dietitian)
             db.session.commit()
