@@ -12,9 +12,7 @@ interface MealCardProps {
   totalCalories: number;
   items: MealItem[];
   isCompleted?: boolean;
-  onPress?: () => void; // Tıklama eventi
-  onGetAlternative?: () => void;
-  onGiveFeedback?: () => void;
+  onPress?: () => void;
 }
 
 export default function MealCard({
@@ -24,12 +22,10 @@ export default function MealCard({
   items,
   isCompleted = false,
   onPress,
-  onGetAlternative,
-  onGiveFeedback,
 }: MealCardProps) {
   return (
     <TouchableOpacity 
-      style={styles.card} 
+      style={styles.card}
       onPress={onPress}
       activeOpacity={0.7}
     >
@@ -51,7 +47,7 @@ export default function MealCard({
       {/* Ayırıcı Çizgi */}
       <View style={styles.divider} />
 
-      {/* Meal Items - Dinamik yükseklik */}
+      {/* Meal Items */}
       {items.map((item, index) => (
         <View key={index} style={styles.itemRow}>
           <View style={styles.itemInfo}>
@@ -62,33 +58,10 @@ export default function MealCard({
         </View>
       ))}
 
-      {/* Detay için dokun */}
-      <Text style={styles.tapHint}>Click for details 👆</Text>
-
-      {/* Action Buttons */}
-      <View style={styles.buttonRow}>
-        {onGiveFeedback && (
-          <TouchableOpacity 
-            style={styles.feedbackBtn} 
-            onPress={(e) => {
-              e.stopPropagation(); // Card'ın onPress'ini engelle
-              onGiveFeedback();
-            }}
-          >
-            <Text style={styles.feedbackBtnText}>Give Feedback</Text>
-          </TouchableOpacity>
-        )}
-        {onGetAlternative && (
-          <TouchableOpacity 
-            style={styles.altBtn} 
-            onPress={(e) => {
-              e.stopPropagation();
-              onGetAlternative();
-            }}
-          >
-            <Text style={styles.altBtnText}>Get an alternative</Text>
-          </TouchableOpacity>
-        )}
+      {/* Click for Details Button - En Altta */}
+      <View style={styles.detailsButton}>
+        <Text style={styles.detailsButtonText}>Click for Details</Text>
+        <Text style={styles.detailsIcon}>📋</Text>
       </View>
     </TouchableOpacity>
   );
@@ -170,42 +143,28 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1a1a1a',
   },
-  tapHint: {
-    fontSize: 12,
-    color: '#999',
-    textAlign: 'center',
-    marginTop: 8,
-    marginBottom: 8,
-    fontStyle: 'italic',
-  },
-  buttonRow: {
+  detailsButton: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 12,
-    gap: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#007AFF',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    marginTop: 16,
+    shadowColor: '#007AFF',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  feedbackBtn: {
-    backgroundColor: '#FFA500',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-  },
-  feedbackBtnText: {
-    color: 'white',
-    fontSize: 14,
+  detailsButtonText: {
+    fontSize: 15,
     fontWeight: '600',
-  },
-  altBtn: {
-    backgroundColor: '#7B61FF',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    flex: 1,
-  },
-  altBtnText: {
     color: 'white',
-    fontSize: 14,
-    fontWeight: '600',
-    textAlign: 'center',
+    marginRight: 8,
+  },
+  detailsIcon: {
+    fontSize: 16,
   },
 });

@@ -1,5 +1,7 @@
-import { Modal, View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { Modal, View, Text, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { useState } from 'react';
 import { mealCardModalStyles as styles } from '../../styles/screens/MealCardModalStyles';
+import FeedbackModal from './FeedbackModal';
 
 interface MealItem {
   name: string;
@@ -8,10 +10,15 @@ interface MealItem {
   protein: number;
   carb: number;
   fat: number;
-  canChange?: boolean; // For storing if the item can be changed or not (Alternative checking)
-  isFollowed?: boolean | null; // For storing if the item is followed or not (Feedback checking)
-  isLLM?: boolean | null; // For storing if the item is suggested by LLM
-  changedItem?: MealItem | null; // For storing the alternative item if any
+  canChange?: boolean;
+  isFollowed?: boolean | null;
+  isLLM?: boolean | null;
+  changedItem?: {
+    itemID: string;
+    itemName: string;
+    portion: number;
+  } | null;
+  itemID?: string;
 }
 
 interface MealDetailModalProps {
@@ -24,8 +31,8 @@ interface MealDetailModalProps {
   totalCarb: number;
   totalFat: number;
   items: MealItem[];
-  isCompleted: boolean; // General meal level completion status
-  canChange: boolean; // General meal level change permission
+  isCompleted: boolean;
+  canChange: boolean;
 }
 
 export default function MealDetailModal({
@@ -42,44 +49,92 @@ export default function MealDetailModal({
   canChange,
 }: MealDetailModalProps) {
   
+  const [feedbackModalVisible, setFeedbackModalVisible] = useState(false);
+  const [selectedFeedbackItem, setSelectedFeedbackItem] = useState<MealItem | null>(null);
+  
   const changeableItems = items.filter(item => item.canChange);
   const allItemsChangeable = items.length > 0 && changeableItems.length === items.length;
   const someItemsChangeable = changeableItems.length > 0 && changeableItems.length < items.length;
   const noItemsChangeable = changeableItems.length === 0;
 
-const getFeedbackStatus = (
-  isFollowed: boolean | null | undefined, 
-  isLLM: boolean | null | undefined, 
-  changedItem: MealItem | null | undefined
-) => {
-  // Henüz feedback verilmedi
-  if (isFollowed === null || isFollowed === undefined) {
+  // Mock data - Backend'den gelecek
+  const availableItems = [
+    { itemID: '1', itemName: 'Grilled Chicken' },
+    { itemID: '2', itemName: 'Brown Rice' },
+    { itemID: '3', itemName: 'Steamed Broccoli' },
+    { itemID: '4', itemName: 'Greek Yogurt' },
+    { itemID: '5', itemName: 'Mixed Nuts' },
+  ];
+
+  const getFeedbackStatus = (
+    isFollowed: boolean | null | undefined, 
+    isLLM: boolean | null | undefined, 
+    changedItem: MealItem['changedItem']
+  ) => {
+    if (isFollowed === null || isFollowed === undefined) {
+      return { text: '⏳ Pending', color: '#FF9800' };
+    }
+    
+    else if (isFollowed === true) {
+      return { text: '✓ Followed', color: '#4CAF50' };
+    }
+    
+    else if (isFollowed === false && canChange && changedItem != null  && isLLM === true) {
+      return { text: '⚠️ Modified with AI', color: '#FF5722' };
+    }
+    
+    else if (isFollowed === false && canChange && changedItem != null && isLLM === false) {
+      return { text: '⚠️ Changed Manually', color: '#9C27B0' };
+    }
+    
+    else if (isFollowed === false) {
+      return { text: '✗ Not Followed', color: '#F44336' };
+    }
+    
     return { text: '⏳ Pending', color: '#FF9800' };
-  }
-  
-  // Yemek yenildi (takip edildi)
-  else if (isFollowed === true) {
-    return { text: '✓ Followed', color: '#4CAF50' };
-  }
-  
-  // Yemek yenilmedi ama AI ile değiştirildi
-  else if (isFollowed === false && isLLM === true) {
-    return { text: '⚠️ Modified with AI', color: '#FF5722' };
-  }
-  
-  // Yemek yenilmedi ama alternatif alındı
-  else if (isFollowed === false && changedItem != null  && isLLM === false) {
-    return { text: '⚠️ Changed Manually', color: '#9C27B0' };
-  }
-  
-  // Yemek hiç yenilmedi (takip edilmedi)
-  else if (isFollowed === false) {
-    return { text: '✗ Not Followed', color: '#F44336' };
-  }
-  
-  // Default durum
-  return { text: '⏳ Pending', color: '#FF9800' };
-};
+  };
+
+  const handleItemFeedbackPress = (item: MealItem) => {
+    if (item.isFollowed !== null && item.isFollowed !== undefined) {
+      Alert.alert('Info', 'Feedback has already been given for this item');
+      return;
+    }
+    setSelectedFeedbackItem(item);
+    setFeedbackModalVisible(true);
+  };
+
+  const handleSubmitFeedback = (feedback: {
+    itemID: string;
+    isFollowed: boolean;
+    changedItems?: Array<{
+      itemID: string;
+      itemName: string;
+      portion: number;
+    }> | null;
+    isLLM: boolean;
+  }) => {
+    console.log('Feedback submitted:', feedback);
+    // TODO: Call backend API
+    Alert.alert('Success', 'Feedback saved successfully!');
+    
+    setFeedbackModalVisible(false);
+    setSelectedFeedbackItem(null);
+  };
+
+  // FeedbackModal render
+  {selectedFeedbackItem && (
+    <FeedbackModal
+      visible={feedbackModalVisible}
+      onClose={() => {
+        setFeedbackModalVisible(false);
+        setSelectedFeedbackItem(null);
+      }}
+      item={selectedFeedbackItem}
+      mealName={mealName}
+      availableItems={availableItems}
+      onSubmitFeedback={handleSubmitFeedback}
+    />
+  )}
 
   return (
     <Modal
@@ -173,6 +228,30 @@ const getFeedbackStatus = (
                     <Text style={styles.macroText}>C: {item.carb}g</Text>
                     <Text style={styles.macroText}>F: {item.fat}g</Text>
                   </View>
+
+                  {/* Individual Item Action Buttons - Feedback verilmemişse göster */}
+                  {(item.isFollowed === null || item.isFollowed === undefined) && (
+                    <View style={styles.itemActionButtons}>
+                      <TouchableOpacity
+                        style={styles.itemFeedbackBtn}
+                        onPress={() => handleItemFeedbackPress(item)}
+                      >
+                        <Text style={styles.itemFeedbackBtnText}>Give Feedback</Text>
+                      </TouchableOpacity>
+                      
+                      {item.canChange && (
+                        <TouchableOpacity
+                          style={styles.itemAlternativeBtn}
+                          onPress={() => {
+                            // TODO: Handle get alternative
+                            Alert.alert('Info', 'Get Alternative functionality coming soon');
+                          }}
+                        >
+                          <Text style={styles.itemAlternativeBtnText}>Get Alternative</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  )}
                 </View>
               );
             })}
@@ -182,7 +261,7 @@ const getFeedbackStatus = (
             {/* Feedback Durumu */}
             <Text style={styles.sectionTitle}>Feedback Status</Text>
             {isCompleted ? (
-              <Text style={styles.feedbackText}>Feedback is given</Text>
+              <Text style={styles.feedbackText}>✓ Feedback is given</Text>
             ) : (
               <Text style={styles.warningText}>⚠️ Feedback not given yet</Text>
             )}
@@ -215,28 +294,26 @@ const getFeedbackStatus = (
               </View>
             )}
 
-            {/* Action Buttons */}
-            <View style={styles.actionButtons}>
-              <TouchableOpacity 
-                style={[styles.feedbackBtn, isCompleted && styles.disabledBtn]}
-                disabled={isCompleted}
-              >
-                <Text style={styles.feedbackBtnText}>
-                  {isCompleted ? 'Feedback is given' : 'Give Feedback'}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.altBtn, noItemsChangeable && styles.disabledBtn]}
-                disabled={noItemsChangeable}
-              >
-                <Text style={styles.altBtnText}>
-                  {noItemsChangeable ? 'No Permission' : 'Get Alternative'}
-                </Text>
-              </TouchableOpacity>
-            </View>
+            {/* ❌ ALT BUTONLAR KALDIRILDI */}
+
           </ScrollView>
         </View>
       </View>
+
+      {/* Feedback Modal */}
+      {selectedFeedbackItem && (
+        <FeedbackModal
+          visible={feedbackModalVisible}
+          onClose={() => {
+            setFeedbackModalVisible(false);
+            setSelectedFeedbackItem(null);
+          }}
+          item={selectedFeedbackItem}
+          mealName={mealName}
+          availableItems={availableItems}
+          onSubmitFeedback={handleSubmitFeedback}
+        />
+      )}
     </Modal>
   );
 }

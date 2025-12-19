@@ -211,4 +211,36 @@ export const mealCardModalStyles = StyleSheet.create({
     fontWeight: '600',
   },
 
+  itemActionButtons: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 10,
+  },
+  itemFeedbackBtn: {
+    flex: 1,
+    backgroundColor: '#FFA500',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  itemFeedbackBtnText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  itemAlternativeBtn: {
+    flex: 1,
+    backgroundColor: '#7B61FF',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  itemAlternativeBtnText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+
 });

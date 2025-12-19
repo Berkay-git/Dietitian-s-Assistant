@@ -133,8 +133,6 @@ export default function Meals() {
             items={meal.items}
             isCompleted={meal.isCompleted}
             onPress={() => handleCardPress(meal)}
-            onGetAlternative={() => handleGetAlternative(meal.mealName)}
-            onGiveFeedback={() => handleGiveFeedback(meal.mealName)}
           />
         ))}
       </ScrollView>

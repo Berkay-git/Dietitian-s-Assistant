@@ -1,0 +1,226 @@
+import { StyleSheet } from 'react-native';
+
+export const feedbackModalStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    width: '90%',
+    maxHeight: '85%',
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 20,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#1a1a1a',
+  },
+  closeBtn: {
+    fontSize: 28,
+    color: '#666',
+    fontWeight: '300',
+  },
+  mealInfoBox: {
+    backgroundColor: '#f5f5f5',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  mealName: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 8,
+  },
+  itemName: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1a1a1a',
+    marginBottom: 4,
+  },
+  itemPortion: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 4,
+  },
+  itemCalories: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FFA500',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#e0e0e0',
+    marginVertical: 16,
+  },
+  questionText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1a1a1a',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  yesNoContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: 16,
+  },
+  yesNoBtn: {
+    flex: 1,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#e0e0e0',
+    backgroundColor: 'white',
+    alignItems: 'center',
+  },
+  yesBtn: {
+    backgroundColor: '#4CAF50',
+    borderColor: '#4CAF50',
+  },
+  noBtn: {
+    backgroundColor: '#F44336',
+    borderColor: '#F44336',
+  },
+  yesNoText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#666',
+  },
+  yesText: {
+    color: 'white',
+  },
+  noText: {
+    color: 'white',
+  },
+  changeSection: {
+    backgroundColor: '#FFF9E6',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#FFC107',
+  },
+  changeSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1a1a1a',
+    marginBottom: 4,
+  },
+  changeSectionSubtitle: {
+    fontSize: 13,
+    color: '#F57C00',
+    marginBottom: 16,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1a1a1a',
+    marginBottom: 8,
+    marginTop: 8,
+  },
+  textInput: {
+    borderWidth: 1,
+    borderColor: '#FFC107',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    backgroundColor: 'white',
+    marginBottom: 8,
+  },
+  submitBtn: {
+    backgroundColor: '#007AFF',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  submitBtnDisabled: {
+    backgroundColor: '#ccc',
+    opacity: 0.6,
+  },
+  submitBtnText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+
+    addedItemsContainer: {
+    marginBottom: 16,
+  },
+  addedItemsLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1a1a1a',
+    marginBottom: 8,
+  },
+  chipContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E3F2FD',
+    borderRadius: 20,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#2196F3',
+  },
+  chipText: {
+    fontSize: 13,
+    color: '#1976D2',
+    fontWeight: '500',
+    marginRight: 6,
+  },
+  chipRemove: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#1976D2',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chipRemoveText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  pickerContainer: {
+    borderWidth: 1,
+    borderColor: '#FFC107',
+    borderRadius: 8,
+    backgroundColor: 'white',
+    marginBottom: 16,
+    overflow: 'hidden',
+  },
+  picker: {
+    height: 50,
+  },
+  addButton: {
+    backgroundColor: '#4CAF50',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  addButtonText: {
+    color: 'white',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  
+});
