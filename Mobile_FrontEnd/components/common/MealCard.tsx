@@ -63,7 +63,7 @@ export default function MealCard({
       ))}
 
       {/* Detay için dokun */}
-      <Text style={styles.tapHint}>Detaylar için dokun 👆</Text>
+      <Text style={styles.tapHint}>Click for details 👆</Text>
 
       {/* Action Buttons */}
       <View style={styles.buttonRow}>

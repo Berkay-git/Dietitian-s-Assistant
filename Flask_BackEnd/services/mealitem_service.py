@@ -150,7 +150,10 @@ def get_meal_items_by_mealid(meal_id):
                 'calories': round(portion_calories, 0),
                 'protein': round(protein, 1),
                 'carb': round(carb, 1),
-                'fat': round(fat, 1)
+                'fat': round(fat, 1),
+                'canChange': meal_item.canChange,
+                'isFollowed': meal_item.isFollowed,
+                'isLLM': meal_item.isLLM,
             })
         
         # After all return the meal data (We will call iteration on meal_service to get meal details)
@@ -171,3 +174,29 @@ def get_meal_items_by_mealid(meal_id):
     except Exception as e:
         print(f"Error in get_meal_items_by_mealid: {str(e)}")
         return None
+    
+    def give_feedback_on_mealitem(client_id, meal_id, item_id, is_followed):
+        """
+        Give feedback on a meal item (isFollowed)
+            
+        Returns:
+            bool: True if update was successful, False otherwise
+        """
+        try:
+            meal_item = MealItem.query.filter_by(
+                ClientID=client_id,
+                MealID=meal_id,
+                ItemID=item_id
+            ).first()
+            
+            if not meal_item:
+                return False
+            
+            meal_item.isFollowed = is_followed
+            db.session.commit()
+            return True
+            
+        except Exception as e:
+            print(f"Error in give_feedback_on_mealitem: {str(e)}")
+            db.session.rollback()
+            return False
