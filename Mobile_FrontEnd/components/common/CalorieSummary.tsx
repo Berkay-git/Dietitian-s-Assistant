@@ -24,8 +24,12 @@ export default function CalorieSummary({ calories, macros }: Props) {
   const radius = 50;
   const strokeWidth = 7;
   const circumference = 2 * Math.PI * radius;
+  
+  const progress = 
+    calories.total> 0
+     ? Math.min(calories.consumed / calories.total, 1)
+     : 0;
 
-  const progress = Math.min(calories.consumed / calories.total, 1);
   const strokeDashoffset = circumference - circumference * progress;
 
   const renderMacro = (
@@ -34,7 +38,10 @@ export default function CalorieSummary({ calories, macros }: Props) {
     consumed: number,
     target: number
   ) => {
-    const percent = Math.min(consumed / target, 1);
+    const percent = 
+      target>0
+        ? Math.min(consumed / target, 1)
+        : 0;      
 
     return (
       <View style={styles.macroItem}>
