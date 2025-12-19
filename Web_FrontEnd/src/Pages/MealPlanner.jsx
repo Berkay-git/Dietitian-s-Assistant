@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 
-// --- 1. DATABASE & MOCK DATA ---
+// --- 1. MOCK FOOD DATABASE ---
 const FOOD_DATABASE = [
   { id: 'f1', name: 'Apple', calories: 52, protein: 0.3, carbs: 14, fat: 0.2 },
   { id: 'f2', name: 'Apricot', calories: 48, protein: 1.4, carbs: 11, fat: 0.4 },
@@ -15,387 +15,474 @@ const FOOD_DATABASE = [
   { id: 'f10', name: 'Almonds', calories: 579, protein: 21, carbs: 22, fat: 50 },
 ];
 
-const MOCK_CLIENT = {
-  name: "Sarah Johnson",
-  age: 28,
-  goal: "Weight Management",
-  startDate: "25 Oct 2025",
-  planDuration: "7 days",
-  medicalReport: "No significant issues recorded.",
-  weight: "70",
-  height: "175",
-  bodyfat: "18"
+// Fallback if page is loaded directly without navigation
+const DEFAULT_CLIENT = {
+  name: "Guest Client",
+  dob: "N/A",
+  goal: "General Health",
+  medicalReport: "None",
+  startDate: new Date().toLocaleDateString(),
+  planDuration: "7 days"
 };
 
 const INITIAL_MEALS = [
-  { id: 1, title: "Breakfast", time: "08:00 - 10:00", items: [{ name: "Oatmeal", amount: 120, calories: 81, protein: 3, carbs: 14, fat: 2, allowChange: true }] },
-  { id: 2, title: "Lunch", time: "12:30 - 13:30", items: [] }
+  {
+    id: 1,
+    title: "Breakfast",
+    time: "08:00 - 10:00",
+    items: [
+      { name: "Oatmeal", amount: 120, calories: 81, protein: 3, carbs: 14, fat: 2, allowChange: true } 
+    ]
+  },
+  {
+    id: 2,
+    title: "Lunch",
+    time: "12:30 - 13:30",
+    items: []
+  }
 ];
 
-// --- 2. INFO POPUP ---
+// --- COMPONENTS ---
 function InfoModal({ isOpen, onClose, title, content, type }) {
   if (!isOpen) return null;
 
   const styles = {
-    overlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000 },
-    modal: { backgroundColor: 'white', padding: '30px', borderRadius: '15px', width: '400px', boxShadow: '0 10px 40px rgba(0,0,0,0.25)', textAlign: 'center' },
-    title: { margin: '0 0 15px 0', color: type === 'medical' ? '#d32f2f' : '#007AFF', fontSize: '22px' },
-    contentBox: { backgroundColor: '#f9f9f9', padding: '15px', borderRadius: '10px', border: '1px solid #eee', color: '#555', fontSize: '16px', lineHeight: '1.5', marginBottom: '20px' },
-    closeButton: { padding: '10px 25px', backgroundColor: '#333', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }
+    overlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000 },
+    modal: { backgroundColor: 'white', padding: '25px', borderRadius: '12px', width: '350px', maxWidth: '90%', boxShadow: '0 4px 20px rgba(0,0,0,0.15)', position: 'relative' },
+    header: { marginBottom: '15px', borderBottom: '1px solid #eee', paddingBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
+    title: { margin: 0, fontSize: '18px', color: type === 'medical' ? '#d32f2f' : '#007AFF' },
+    closeBtn: { background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#999' },
+    content: { fontSize: '16px', lineHeight: '1.5', color: '#333' }
   };
 
   return (
-    <div style={styles.overlay}>
-      <div style={styles.modal}>
-        <h3 style={styles.title}>{title}</h3>
-        <div style={styles.contentBox}>{content}</div>
-        <button style={styles.closeButton} onClick={onClose}>Close</button>
+    <div style={styles.overlay} onClick={onClose}>
+      <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+        <div style={styles.header}>
+          <h3 style={styles.title}>{title}</h3>
+          <button style={styles.closeBtn} onClick={onClose}>&times;</button>
+        </div>
+        <div style={styles.content}>
+          {content}
+        </div>
       </div>
     </div>
   );
 }
 
-// --- 3. ADD MEAL MODAL ---
+
 function AddMealModal({ isOpen, onClose, onAdd }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFood, setSelectedFood] = useState(null);
-  const [grams, setGrams] = useState(100);
+  const [grams, setGrams] = useState(100); 
 
   if (!isOpen) return null;
 
-  const filteredFoods = FOOD_DATABASE.filter(food => food.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filteredFoods = FOOD_DATABASE.filter(food => 
+    food.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const handleSave = () => {
     if (selectedFood) {
       onAdd(selectedFood, grams);
-      setSearchTerm(''); setSelectedFood(null); setGrams(100); onClose();
+      setSearchTerm('');
+      setSelectedFood(null);
+      setGrams(100);
+      onClose();
     }
   };
 
   const styles = {
-    overlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
-    modal: { backgroundColor: 'white', padding: '30px', borderRadius: '15px', width: '450px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', gap: '20px', boxShadow:'0 10px 40px rgba(0,0,0,0.2)' },
-    list: { border: '1px solid #eee', maxHeight: '200px', overflowY: 'auto', borderRadius: '8px', backgroundColor:'#f9f9f9' },
-    listItem: { padding: '12px', cursor: 'pointer', borderBottom: '1px solid #eee', display:'flex', justifyContent:'space-between', alignItems:'center' },
-    selectedItem: { backgroundColor: '#e3f2fd', fontWeight: 'bold', color:'#007AFF' },
-    input: { padding: '12px', width: '100%', boxSizing: 'border-box', borderRadius:'8px', border:'1px solid #ddd', fontSize:'16px', outline:'none' }
+    overlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
+    modal: { backgroundColor: 'white', padding: '20px', borderRadius: '8px', width: '400px', maxHeight: '80vh', display: 'flex', flexDirection: 'column', gap: '10px' },
+    list: { border: '1px solid #ddd', maxHeight: '150px', overflowY: 'auto', borderRadius: '4px' },
+    listItem: { padding: '8px', cursor: 'pointer', borderBottom: '1px solid #eee' },
+    selectedItem: { backgroundColor: '#e6f7ff', fontWeight: 'bold' },
+    input: { padding: '8px', width: '100%', boxSizing: 'border-box' }
   };
 
   return (
     <div style={styles.overlay}>
       <div style={styles.modal}>
-        <h3 style={{margin:0, color:'#333', fontSize:'22px'}}>Add Food Item</h3>
-        <input type="text" placeholder="Search food (e.g. apple)..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={styles.input} autoFocus />
-        
+        <h3>Add Food Item</h3>
+        <input 
+          type="text" 
+          placeholder="Search food (e.g. 'chick')..." 
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          style={styles.input}
+          autoFocus
+        />
         <div style={styles.list}>
-          {filteredFoods.length === 0 ? <div style={{padding:'15px', color:'#999', textAlign:'center'}}>No items found</div> : filteredFoods.map(food => (
-            <div key={food.id} style={{ ...styles.listItem, ...(selectedFood?.id === food.id ? styles.selectedItem : {}) }} onClick={() => setSelectedFood(food)}>
-              <span>{food.name}</span>
-              <span style={{ fontSize: '0.9em', color: selectedFood?.id === food.id ? '#007AFF' : '#999' }}>{food.calories} kcal/100g</span>
+          {filteredFoods.length === 0 ? <div style={{padding:'10px', color:'#999'}}>No items found</div> : filteredFoods.map(food => (
+            <div key={food.id} style={{...styles.listItem, ...(selectedFood?.id === food.id ? styles.selectedItem : {})}} onClick={() => setSelectedFood(food)}>
+              {food.name} <span style={{fontSize:'0.8em', color:'#666'}}>({food.calories}kcal/100g)</span>
             </div>
           ))}
         </div>
-
         {selectedFood && (
-            <div style={{ backgroundColor: '#f0f0f0', padding: '15px', borderRadius: '8px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-                <div>
-                    <strong style={{display:'block', color:'#333'}}>{selectedFood.name}</strong>
-                    <span style={{fontSize:'0.8em', color:'#666'}}>Calculated: {Math.round((grams/100) * selectedFood.calories)} kcal</span>
-                </div>
-                <div style={{display:'flex', alignItems:'center', gap:'5px'}}>
-                    <input type="number" value={grams} onChange={(e) => setGrams(Number(e.target.value))} style={{ width: '60px', padding: '8px', borderRadius:'5px', border:'1px solid #ddd', outline:'none', textAlign:'center' }} />
-                    <span style={{fontSize:'0.9em', color:'#555'}}>g</span>
-                </div>
-            </div>
+          <div style={{backgroundColor: '#f0f0f0', padding: '10px', borderRadius: '4px'}}>
+            <p style={{margin: '0 0 5px 0'}}>Selected: <strong>{selectedFood.name}</strong></p>
+            <label>Amount (grams): </label>
+            <input type="number" value={grams} onChange={(e) => setGrams(Number(e.target.value))} style={{width: '60px', padding: '5px'}} />
+            <div style={{fontSize: '0.8em', marginTop: '5px', color: '#555'}}>Calculated: {Math.round((grams/100) * selectedFood.calories)} kcal</div>
+          </div>
         )}
-        
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button onClick={handleSave} disabled={!selectedFood} style={{ flex: 2, padding: '12px', backgroundColor: selectedFood ? '#28a745' : '#ccc', color: 'white', border:'none', borderRadius:'8px', fontWeight:'bold', cursor: selectedFood ? 'pointer' : 'default', fontSize:'16px' }}>Add to Meal</button>
-          <button onClick={onClose} style={{ flex: 1, padding: '12px', backgroundColor: '#dc3545', color: 'white', border:'none', borderRadius:'8px', fontWeight:'bold', cursor:'pointer', fontSize:'16px' }}>Cancel</button>
+        <div style={{display: 'flex', gap: '10px', marginTop: '10px'}}>
+          <button onClick={handleSave} disabled={!selectedFood} style={{flex: 1, padding: '10px', cursor: 'pointer', backgroundColor: selectedFood ? '#4CAF50' : '#ccc', color: 'white', border: 'none', borderRadius: '4px'}}>Add to Meal</button>
+          <button onClick={onClose} style={{flex: 1, padding: '10px', cursor: 'pointer', backgroundColor: '#f44336', color: 'white', border: 'none', borderRadius: '4px'}}>Cancel</button>
         </div>
       </div>
     </div>
   );
 }
 
-// --- 4. CLIENT INFO BANNER ---
 function ClientInfoBanner({ client }) {
+  const [modalType, setModalType] = useState(null); // 'medical' or 'body' or null
   const [selectedDate, setSelectedDate] = useState('');
   const [durationDays, setDurationDays] = useState(7);
-  const [modalType, setModalType] = useState(null);
 
+  // Helper to render the correct modal based on state
   const renderModalContent = () => {
-    if (modalType === 'medical') return <InfoModal isOpen={true} onClose={() => setModalType(null)} title="⚠️ Medical Report" type="medical" content={client.medicalReport || "No medical issues reported."} />;
-    if (modalType === 'body') return <InfoModal isOpen={true} onClose={() => setModalType(null)} title="📏 Body Measurements" type="body" content={<div style={{textAlign:'left'}}><p><strong>Weight:</strong> {client.weight || '-'} kg</p><p><strong>Height:</strong> {client.height || '-'} cm</p><p><strong>Body Fat:</strong> %{client.bodyfat || '-'}</p></div>} />;
+    if (modalType === 'medical') {
+      return (
+        <InfoModal 
+          isOpen={true} 
+          onClose={() => setModalType(null)} 
+          title="⚠️ Medical Report" 
+          type="medical" 
+          content={
+            <div>
+               <p style={{fontSize: '1.1em', fontWeight: 'bold'}}>{client.medicalReport || "No medical issues reported."}</p>
+               <p style={{fontSize: '0.9em', color:'#666', marginTop:'10px'}}>Always consider these conditions when adding high-sugar or high-sodium foods.</p>
+            </div>
+          } 
+        />
+      );
+    }
+    
+    if (modalType === 'body') {
+      return (
+        <InfoModal 
+          isOpen={true} 
+          onClose={() => setModalType(null)} 
+          title="📏 Body Details" 
+          type="body" 
+          content={
+            <div style={{textAlign:'left'}}>
+              {/* DOB and Gender moved here */}
+              <div style={{marginBottom:'15px', paddingBottom:'10px', borderBottom:'1px dashed #eee'}}>
+                <p><strong>DOB:</strong> {client.dob || '-'}</p>
+                <p><strong>Gender:</strong> {client.gender || '-'}</p>
+              </div>
+              <p><strong>Weight:</strong> {client.weight || '-'} kg</p>
+              <p><strong>Height:</strong> {client.height || '-'} cm</p>
+              <p><strong>Body Fat:</strong> %{client.bodyfat || '-'}</p>
+              <p><strong>Activity:</strong> {client.activity || '-'}</p>
+            </div>
+          } 
+        />
+      );
+    }
     return null;
   };
 
   const styles = { 
-      container: { backgroundColor: 'white', padding: '25px', borderRadius: '15px', marginBottom: '30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' },
-      infoGroup: { display:'flex', flexDirection:'column', gap:'5px' },
-      buttonGroup: { display:'flex', gap:'10px', marginTop:'10px' },
-      infoButton: { padding:'8px 12px', backgroundColor:'#f0f0f0', border:'1px solid #ddd', borderRadius:'8px', cursor:'pointer', fontSize:'13px', fontWeight:'bold', color:'#555', transition:'0.2s' },
-      selectInput: { padding:'8px', border:'1px solid #ddd', borderRadius:'8px', color:'#555', outline:'none' }
+    container: { backgroundColor: '#e0e0e0', padding: '20px', borderRadius: '8px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }, 
+    buttonGroup: { display: 'flex', gap: '10px' }, // Side by side layout
+    button: { backgroundColor: '#f8f9fa', border: '1px solid #ccc', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '14px', fontWeight: '500', transition: 'background 0.2s' } 
   };
 
   return (
     <div style={styles.container}>
-      <div style={styles.infoGroup}>
-        <h2 style={{margin:0, color: '#333'}}>Diet Plan for <span style={{color: '#007AFF'}}>{client.name}</span></h2>
-        <p style={{margin:0, color:'#666'}}>Goal: <strong>{client.goal || MOCK_CLIENT.goal}</strong></p>
-        <div style={styles.buttonGroup}>
-            <button style={styles.infoButton} onClick={() => setModalType('medical')}>View Medical Report</button>
-            <button style={styles.infoButton} onClick={() => setModalType('body')}>View Body Measurements</button>
-        </div>
+      {/* LEFT: Main Info */}
+      <div>
+        <h2 style={{marginTop: 0, marginBottom: '5px', color: '#333'}}>
+          Client: <span style={{color: 'purple'}}>{client.name}</span>
+        </h2>
+        {/* Removed DOB/Gender from here */}
+        <p style={{margin: '5px 0', fontSize:'1.1em'}}>
+          Goal: <span style={{fontWeight: 'bold', color: 'purple'}}>{client.goal}</span>
+        </p>
+        
+        {/* Shows plan info only if selected */}
+        {selectedDate && <p style={{marginTop: '5px', fontSize:'0.9em', color:'#555'}}>Planning for: <strong>{selectedDate}</strong> ({durationDays} days)</p>}
       </div>
-      <div style={{display:'flex', gap:'15px', alignItems:'flex-end'}}>
-        <div><label style={{fontSize:'0.85em', color:'#888', display:'block', marginBottom:'3px'}}>Start Date</label><input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} style={styles.selectInput} /></div>
-        <div><label style={{fontSize:'0.85em', color:'#888', display:'block', marginBottom:'3px'}}>Duration</label><select value={durationDays} onChange={(e) => setDurationDays(Number(e.target.value))} style={styles.selectInput}><option value={7}>7 Days</option><option value={14}>14 Days</option><option value={30}>30 Days</option></select></div>
+
+      {/* MIDDLE: Buttons Side-by-Side */}
+      <div style={styles.buttonGroup}>
+        <button 
+          style={{...styles.button, color: '#d32f2f', borderColor: '#ffcdd2', backgroundColor: '#ffebee'}} 
+          onClick={() => setModalType('medical')}
+        >
+          ⚠️ View Medical Report
+        </button>
+        <button 
+          style={{...styles.button, color: '#007AFF', borderColor: '#b3e5fc', backgroundColor: '#e1f5fe'}} 
+          onClick={() => setModalType('body')}
+        >
+          📏 View Body Measurements
+        </button>
       </div>
+
+      {/* RIGHT: Plan Settings */}
+      <div style={{textAlign:'right'}}>
+        <label style={{display:'block', fontSize:'0.8em', marginBottom:'4px', color:'#666'}}>Plan Start Date:</label>
+        <input
+          type="date"
+          value={selectedDate}
+          onChange={(e) => setSelectedDate(e.target.value)}
+          style={{padding:'6px', border:'1px solid #999', borderRadius:'4px', marginBottom:'10px'}}
+        />
+        <select
+          value={durationDays}
+          onChange={(e) => setDurationDays(Number(e.target.value))}
+          style={{padding:'6px', border:'1px solid #999', borderRadius:'4px'}}
+        >
+          <option value={3}>3 Days</option>
+          <option value={7}>7 Days</option>
+          <option value={14}>14 Days</option>
+          <option value={30}>30 Days</option>
+        </select>
+      </div>
+
+      {/* RENDER THE MODAL IF ACTIVE */}
       {renderModalContent()}
     </div>
   );
 }
 
-// --- 5. MEAL CARD ( EDIT HEADER + DELETE MEAL) ---
-function MealCard({ meal, onOpenAddModal, onDeleteItem, onToggleItem, onDeleteMeal, onUpdateHeader }) {
-  // STATE Düzenleme Modu
-  const [isEditing, setIsEditing] = useState(false);
-  const [tempTitle, setTempTitle] = useState(meal.title);
-  const [tempTime, setTempTime] = useState(meal.time);
-
+function MealCard({ meal, onOpenAddModal, onDeleteItem, onToggleItem, onEditMeal }) {
   let mealCals = 0, mealPro = 0, mealCarbs = 0, mealFat = 0;
   meal.items.forEach(item => {
-    mealCals += item.calories; mealPro += item.protein; mealCarbs += item.carbs; mealFat += item.fat;
+    mealCals += item.calories;
+    mealPro += item.protein;
+    mealCarbs += item.carbs;
+    mealFat += item.fat;
   });
 
   const isMealStrict = meal.items.length > 0 && meal.items.every(item => !item.allowChange);
   const headerColor = isMealStrict ? '#d32f2f' : '#2e7d32'; 
   const statusMessage = isMealStrict ? "⚠️ Client will not be able to change the meal" : "ℹ️ Client can change a green meal item";
-  const statusBg = isMealStrict ? '#ffebee' : '#e8f5e9';
-  const statusText = isMealStrict ? '#c62828' : '#2e7d32';
+  const statusColor = isMealStrict ? '#ffebee' : '#e8f5e9'; 
 
-  const handleSaveHeader = () => {
-      onUpdateHeader(meal.id, tempTitle, tempTime);
-      setIsEditing(false);
-  };
+  const [isEditing, setIsEditing] = useState(false);
+  const [titleDraft, setTitleDraft] = useState(meal.title);
+  const [startTimeDraft, setStartTimeDraft] = useState((meal.time || '').split(' - ')[0] || '');
+  const [endTimeDraft, setEndTimeDraft] = useState((meal.time || '').split(' - ')[1] || '');
 
   const styles = {
-    card: { border: '1px solid #eee', borderRadius: '15px', padding: '25px', marginBottom: '25px', backgroundColor: 'white', boxShadow: '0 4px 10px rgba(0,0,0,0.03)', position: 'relative' },
-    header: { marginBottom: '20px', borderBottom: '2px solid #f5f5f5', paddingBottom: '15px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
-    headerLeft: { display: 'flex', alignItems: 'center', gap: '12px', flex: 1 },
-    headerIndicator: { width: '18px', height: '18px', borderRadius: '50%', backgroundColor: headerColor, boxShadow: '0 0 8px rgba(0,0,0,0.2)' },
-    itemToggle: { cursor: 'pointer', marginRight: '15px', fontSize: '1.2em', userSelect: 'none' },
-    itemRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px dashed #eee', fontSize:'16px' },
-    summaryBox: { backgroundColor: '#f8f9fa', padding: '15px', borderRadius: '10px', fontSize: '0.9em', marginTop:'20px', display:'flex', justifyContent:'space-between', alignItems:'center' },
-    footerMessage: { marginTop: '15px', padding: '10px', borderRadius: '8px', backgroundColor: statusBg, color: statusText, fontSize: '0.9em', fontWeight:'bold', textAlign:'center' },
-    
-    // BUTONLAR
-    actionBtn: { background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', color: '#999', transition: '0.2s', padding:'5px' },
-    editInput: { padding:'5px', borderRadius:'5px', border:'1px solid #ddd', fontSize:'14px', outline:'none' }
+    card: { border: '1px solid #ccc', borderRadius: '8px', padding: '15px', marginBottom: '15px', backgroundColor: '#f9f9f9', boxShadow: '2px 2px 5px rgba(0,0,0,0.1)' },
+    header: { marginBottom: '10px', borderBottom: '1px solid #ddd', paddingBottom: '5px', display: 'flex', alignItems: 'center', gap: '10px' },
+    contentGrid: { display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px' },
+    itemRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px dotted #ccc' },
+    addButton: { color: 'blue', cursor: 'pointer', marginTop: '10px', display: 'inline-block', fontWeight: 'bold' },
+    summaryBox: { backgroundColor: '#e8e8e8', padding: '15px', borderRadius: '8px', fontSize: '0.9em', border: '1px solid #d0d0d0', height: 'fit-content' },
+    headerIndicator: { width: '20px', height: '20px', borderRadius: '50%', backgroundColor: headerColor, border: '2px solid white', boxShadow: '0 0 3px rgba(0,0,0,0.3)', display: 'inline-block' },
+    itemToggle: { cursor: 'pointer', marginRight: '10px', fontSize: '1.2em', userSelect: 'none' },
+    footerMessage: { gridColumn: '2 / 3', marginTop: '10px', padding: '8px', borderRadius: '4px', backgroundColor: statusColor, color: headerColor, fontSize: '0.9em', textAlign: 'center', fontStyle: 'italic', border: `1px solid ${headerColor}` },
+    editBtn: { marginLeft: 'auto', padding: '4px 8px', border: '1px solid #999', background: '#f0f0f0', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85em' },
+    textInput: { padding: '6px', border: '1px solid #bbb', borderRadius: '4px' },
+    timeInput: { padding: '6px', border: '1px solid #bbb', borderRadius: '4px', width: '110px' },
+    editActions: { display: 'flex', gap: '6px' }
+  };
+
+  const handleSaveEdit = () => {
+    const newTitle = titleDraft.trim() || meal.title;
+    const newTime = startTimeDraft && endTimeDraft ? `${startTimeDraft} - ${endTimeDraft}` : meal.time;
+    onEditMeal(meal.id, { title: newTitle, time: newTime });
+    setIsEditing(false);
+  };
+
+  const handleCancelEdit = () => {
+    setTitleDraft(meal.title);
+    const [s, e] = (meal.time || '').split(' - ');
+    setStartTimeDraft(s || '');
+    setEndTimeDraft(e || '');
+    setIsEditing(false);
   };
 
   return (
     <div style={styles.card}>
       <div style={styles.header}>
-        <div style={styles.headerLeft}>
-            <div style={styles.headerIndicator}></div>
-            
-            {isEditing ? (
-                // DÜZENLEME MODU
-                <div style={{display:'flex', gap:'10px', alignItems:'center'}}>
-                    <input style={styles.editInput} value={tempTitle} onChange={e => setTempTitle(e.target.value)} placeholder="Meal Name" />
-                    <input style={styles.editInput} value={tempTime} onChange={e => setTempTime(e.target.value)} placeholder="Time (e.g. 08:00 - 09:00)" />
-                    <button style={{...styles.actionBtn, color:'#28a745'}} onClick={handleSaveHeader}>💾</button>
-                </div>
-            ) : (
-                // GÖRÜNTÜLEME MODU
-                <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
-                    <strong style={{fontSize:'20px', color:'#333'}}>{meal.title}</strong>
-                    <span style={{color:'#999', fontSize:'0.9em', fontWeight:'normal'}}>({meal.time})</span>
-                    <button style={styles.actionBtn} onClick={() => setIsEditing(true)} title="Edit Name & Time">✏️</button>
-                </div>
-            )}
-        </div>
-        
-        {/* ÖĞÜN SİLME BUTONU */}
-        <button style={styles.actionBtn} onClick={() => onDeleteMeal(meal.id)} title="Delete Meal">🗑️</button>
+        <div style={styles.headerIndicator} title={isMealStrict ? "Meal is Locked" : "Meal is Flexible"}></div>
+        {!isEditing ? (
+          <>
+            <strong>{meal.title} ({meal.time})</strong>
+            <button style={styles.editBtn} onClick={() => { setTitleDraft(meal.title); const [s, e] = (meal.time || '').split(' - '); setStartTimeDraft(s || ''); setEndTimeDraft(e || ''); setIsEditing(true); }}>Edit</button>
+          </>
+        ) : (
+          <div style={{display:'flex', alignItems:'center', gap:'8px', flexWrap:'wrap', width:'100%'}}>
+            <input type="text" value={titleDraft} onChange={(e) => setTitleDraft(e.target.value)} placeholder="Meal name" style={styles.textInput} />
+            <input type="time" value={startTimeDraft} onChange={(e) => setStartTimeDraft(e.target.value)} style={styles.timeInput} />
+            <span>-</span>
+            <input type="time" value={endTimeDraft} onChange={(e) => setEndTimeDraft(e.target.value)} style={styles.timeInput} />
+            <div style={styles.editActions}>
+              <button onClick={handleSaveEdit} style={{padding:'6px 10px', background:'#2e7d32', color:'#fff', border:'none', borderRadius:'4px', cursor:'pointer'}}>Save</button>
+              <button onClick={handleCancelEdit} style={{padding:'6px 10px', background:'#ccc', color:'#333', border:'none', borderRadius:'4px', cursor:'pointer'}}>Cancel</button>
+            </div>
+          </div>
+        )}
       </div>
       
-      <div>
-        {meal.items.map((item, index) => (
-          <div key={index} style={styles.itemRow}>
-            <div style={{display: 'flex', alignItems: 'center'}}>
-              <span style={styles.itemToggle} onClick={() => onToggleItem(meal.id, index)} title="Toggle Strict/Flexible">
-                {item.allowChange ? '🟢' : '🔴'}
-              </span>
-              <span><strong>{item.amount}g</strong> {item.name}</span>
+      <div style={styles.contentGrid}>
+        <div>
+          {meal.items.length === 0 ? <div style={{color:'#999', fontStyle:'italic'}}>No items yet</div> : null}
+          {meal.items.map((item, index) => (
+            <div key={index} style={styles.itemRow}>
+              <div style={{display: 'flex', alignItems: 'center'}}>
+                <span style={styles.itemToggle} onClick={() => onToggleItem(meal.id, index)} title="Click to toggle: Green = Changeable, Red = Strict">
+                  {item.allowChange ? '🟢' : '🔴'}
+                </span>
+                <span>{item.amount}g {item.name}</span>
+              </div>
+              <button onClick={() => onDeleteItem(meal.id, index)} style={{color: '#845252ff', border:'1px solid red', background:'none', cursor:'pointer', fontSize:'0.8em'}}>Remove 🗑️</button>
             </div>
-            <button onClick={() => onDeleteItem(meal.id, index)} style={{color: '#dc3545', border:'1px solid #f8d7da', backgroundColor:'white', cursor:'pointer', padding:'5px 12px', borderRadius:'6px', fontSize:'12px', fontWeight:'bold'}}>Remove</button>
-          </div>
-        ))}
-        
-        <div 
-            style={{color: '#007AFF', cursor: 'pointer', marginTop: '15px', fontWeight: 'bold', padding:'12px', backgroundColor:'#f0f7ff', borderRadius:'8px', textAlign:'center', border:'1px dashed #007AFF'}} 
-            onClick={() => onOpenAddModal(meal.id)}
-        >
-            + Add Item to {meal.title}
+          ))}
+          <div style={styles.addButton} onClick={() => onOpenAddModal(meal.id)}>[ + Add Meal Item ]</div>
         </div>
+        <div style={styles.summaryBox}>
+          <div style={{fontWeight:'bold', marginBottom:'5px', borderBottom:'1px solid #bbb', paddingBottom:'5px'}}>Meal Total:</div>
+          <div>🔥 {Math.round(mealCals)} kcal</div>
+          <div style={{marginTop:'5px', color:'#444'}}>Protein: {Math.round(mealPro)}g</div>
+          <div style={{color:'#444'}}>Carbs: {Math.round(mealCarbs)}g</div>
+          <div style={{color:'#444'}}>Fat: {Math.round(mealFat)}g</div>
+        </div>
+        <div style={styles.footerMessage}>{statusMessage}</div>
       </div>
-
-      <div style={styles.summaryBox}>
-          <div><strong>Total:</strong> {Math.round(mealCals)} kcal</div>
-          <div style={{display:'flex', gap:'15px', color:'#666'}}>
-              <span>P: {Math.round(mealPro)}g</span>
-              <span>C: {Math.round(mealCarbs)}g</span>
-              <span>F: {Math.round(mealFat)}g</span>
-          </div>
-      </div>
-      <div style={styles.footerMessage}>{statusMessage}</div>
     </div>
   );
 }
 
-// --- 6. GLOBAL SUMMARY ---
 function GlobalNutritionSummary({ meals }) {
   let totalCals = 0, totalProtein = 0, totalCarbs = 0, totalFat = 0;
   meals.forEach(meal => {
     meal.items.forEach(item => {
-      totalCals += item.calories; totalProtein += item.protein; totalCarbs += item.carbs; totalFat += item.fat;
+      totalCals += item.calories;
+      totalProtein += item.protein;
+      totalCarbs += item.carbs;
+      totalFat += item.fat;
     });
   });
-
-  const styles = { container: { backgroundColor: '#333', color: '#fff', padding: '30px', borderRadius: '15px', boxShadow: '0 8px 25px rgba(0,0,0,0.2)' } };
-
+  const styles = { container: { backgroundColor: '#333', color: '#fff', padding: '20px', borderRadius: '8px', height: 'fit-content', boxShadow: '0 4px 8px rgba(0,0,0,0.2)' } };
   return (
     <div style={styles.container}>
-      <h3 style={{marginTop:0, borderBottom:'1px solid #555', paddingBottom:'15px', fontSize:'20px', color:'#eee'}}>Daily Targets</h3>
-      <div style={{marginBottom:'20px'}}>
-        <div style={{fontSize:'14px', color:'#aaa', marginBottom:'5px'}}>TOTAL CALORIES</div>
-        <div style={{fontSize:'32px', fontWeight:'bold', color:'#4CAF50'}}>{Math.round(totalCals)} kcal</div>
-      </div>
-      <div style={{display:'flex', flexDirection:'column', gap:'12px'}}>
-          <div style={{display:'flex', justifyContent:'space-between', borderBottom:'1px solid #444', paddingBottom:'5px'}}><span style={{color:'#ddd'}}>Protein</span> <strong>{Math.round(totalProtein)}g</strong></div>
-          <div style={{display:'flex', justifyContent:'space-between', borderBottom:'1px solid #444', paddingBottom:'5px'}}><span style={{color:'#ddd'}}>Carbs</span> <strong>{Math.round(totalCarbs)}g</strong></div>
-          <div style={{display:'flex', justifyContent:'space-between', borderBottom:'1px solid #444', paddingBottom:'5px'}}><span style={{color:'#ddd'}}>Fat</span> <strong>{Math.round(totalFat)}g</strong></div>
-      </div>
+      <h2 style={{marginTop:0, borderBottom:'1px solid #555', paddingBottom:'10px'}}>Daily Totals</h2>
+      <p style={{fontSize:'1.2em'}}><strong>Total Calories:</strong> {Math.round(totalCals)} kcal</p>
+      <p><strong>Protein:</strong> {Math.round(totalProtein)} g</p>
+      <p><strong>Carbs:</strong> {Math.round(totalCarbs)} g</p>
+      <p><strong>Fat:</strong> {Math.round(totalFat)} g</p>
     </div>
   );
 }
 
-// === MAIN COMPONENT ===
+// === MAIN PAGE COMPONENT ===
 export default function MealPlanner() {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const client = location.state || MOCK_CLIENT;
-
   const [meals, setMeals] = useState(INITIAL_MEALS);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [activeMealId, setActiveMealId] = useState(null);
+  const [activeMealId, setActiveMealId] = useState(null); 
+  
+  // 1. Get the data passed from ClientDetails
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // 2. Extract client data (OR use fallback if refreshed)
+  const clientData = location.state?.client || DEFAULT_CLIENT;
 
   const handleOpenModal = (mealId) => { setActiveMealId(mealId); setIsModalOpen(true); };
   const handleCloseModal = () => { setIsModalOpen(false); setActiveMealId(null); };
 
-  // ÖĞÜN EKLEME
-  const handleAddMeal = () => {
-    const newMeal = {
-        id: Date.now(),
-        title: "New Meal",
-        time: "00:00 - 00:00",
-        items: []
-    };
-    setMeals([...meals, newMeal]);
-  };
-
-  // ÖĞÜN SİLME
-  const handleDeleteMeal = (mealId) => {
-    if (window.confirm("Are you sure you want to delete this meal?")) {
-        setMeals(meals.filter(meal => meal.id !== mealId));
-    }
-  };
-
-  // ÖĞÜN BAŞLIĞI VE SAATİ GÜNCELLEME
-  const handleUpdateHeader = (mealId, newTitle, newTime) => {
-      setMeals(prevMeals => prevMeals.map(meal => {
-          if (meal.id === mealId) {
-              return { ...meal, title: newTitle, time: newTime };
-          }
-          return meal;
-      }));
-  };
-
   const handleDeleteItem = (mealId, itemIndex) => {
     setMeals(prevMeals => prevMeals.map(meal => {
       if (meal.id === mealId) {
-        const newItems = [...meal.items]; newItems.splice(itemIndex, 1); return { ...meal, items: newItems };
-      } return meal;
+        const newItems = [...meal.items];
+        newItems.splice(itemIndex, 1);
+        return { ...meal, items: newItems };
+      }
+      return meal;
     }));
   };
 
   const handleToggleItem = (mealId, itemIndex) => {
     setMeals(prevMeals => prevMeals.map(meal => {
       if (meal.id === mealId) {
-        const newItems = [...meal.items]; newItems[itemIndex] = { ...newItems[itemIndex], allowChange: !newItems[itemIndex].allowChange }; return { ...meal, items: newItems };
-      } return meal;
+        const newItems = [...meal.items];
+        newItems[itemIndex] = { ...newItems[itemIndex], allowChange: !newItems[itemIndex].allowChange };
+        return { ...meal, items: newItems };
+      }
+      return meal;
     }));
   };
 
   const handleAddFood = (foodItem, grams) => {
     const ratio = grams / 100;
-    const newItem = { name: foodItem.name, amount: grams, calories: foodItem.calories * ratio, protein: foodItem.protein * ratio, carbs: foodItem.carbs * ratio, fat: foodItem.fat * ratio, allowChange: true };
+    const newItem = {
+      name: foodItem.name,
+      amount: grams,
+      calories: foodItem.calories * ratio,
+      protein: foodItem.protein * ratio,
+      carbs: foodItem.carbs * ratio,
+      fat: foodItem.fat * ratio,
+      allowChange: true 
+    };
     setMeals(prevMeals => prevMeals.map(meal => {
-      if (meal.id === activeMealId) return { ...meal, items: [...meal.items, newItem] }; return meal;
+      if (meal.id === activeMealId) return { ...meal, items: [...meal.items, newItem] };
+      return meal;
     }));
   };
 
-  const handleSavePlan = () => { alert(`Diet plan for ${client.name} saved successfully!`); };
+  const handleEditMeal = (mealId, updates) => {
+    setMeals(prev => prev.map(m => (m.id === mealId ? { ...m, title: updates.title ?? m.title, time: updates.time ?? m.time } : m)));
+  };
 
   const styles = {
-    mainContainer: { padding: '40px 20px', backgroundColor: '#f5f5f5', minHeight: '100vh', fontFamily: 'Arial, sans-serif', display: 'flex', justifyContent: 'center' },
-    contentContainer: { maxWidth: '1200px', width: '100%' },
-    headerRow: { display:'flex', alignItems:'center', marginBottom:'20px' },
-    backButton: { padding: '10px 15px', backgroundColor: 'transparent', color: '#666', border: 'none', cursor: 'pointer', fontWeight:'bold', fontSize:'16px', display:'flex', alignItems:'center', gap:'5px' },
-    layoutGrid: { display:'grid', gridTemplateColumns: '7fr 3fr', gap:'30px', alignItems:'start' },
-    saveButton: { width: '100%', padding: '18px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '12px', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 15px rgba(40, 167, 69, 0.3)', marginTop:'20px', transition:'transform 0.2s' }
+    layout: { display: 'grid', gridTemplateColumns: '3fr 1fr', gap: '20px', padding: '20px', fontFamily: 'Arial, sans-serif', maxWidth: '1300px', margin: '0 auto' },
+    header: { gridColumn: '1 / -1' },
+    mainColumn: { display: 'flex', flexDirection: 'column', gap: '20px' },
+    sidebar: { display: 'flex', flexDirection: 'column', gap: '20px' },
+    // "Back" button styling
+    backBar: { display:'flex', alignItems:'center', gap:'10px', marginBottom:'10px' },
+    backButton: { padding:'8px 15px', cursor:'pointer', border:'none', backgroundColor:'#6c757d', color:'white', borderRadius:'4px', fontWeight:'bold' }
   };
 
   return (
-    <div style={styles.mainContainer}>
-      <div style={styles.contentContainer}>
-        <div style={styles.headerRow}>
-            <button style={styles.backButton} onClick={() => navigate(-1)}><span>←</span> Back to Profile</button>
+    <div style={styles.layout}>
+      <div style={styles.header}>
+        <div style={styles.backBar}>
+           {/* If we have client data, go back to THAT client's details. Otherwise dashboard. */}
+           <button style={styles.backButton} onClick={() => navigate(-1)}>&larr; Back</button>
+           <h2 style={{margin:0}}>Create Meal Plan</h2>
         </div>
-        <ClientInfoBanner client={client} />
-        <div style={styles.layoutGrid}>
-            <div>
-                {meals.map(meal => (
-                <MealCard 
-                    key={meal.id} 
-                    meal={meal} 
-                    onOpenAddModal={handleOpenModal} 
-                    onDeleteItem={handleDeleteItem} 
-                    onToggleItem={handleToggleItem}
-                    onDeleteMeal={handleDeleteMeal}
-                    onUpdateHeader={handleUpdateHeader}
-                />
-                ))}
-                 <button 
-                    style={{padding: '20px', backgroundColor: '#e9ecef', color: '#555', border: '2px dashed #ccc', borderRadius: '15px', cursor: 'pointer', width:'100%', fontWeight:'bold', fontSize:'16px', transition:'0.3s'}}
-                    onClick={handleAddMeal}
-                 >
-                    + Add New Meal Time
-                 </button>
-            </div>
-            <div>
-                <GlobalNutritionSummary meals={meals} />
-                <div style={{padding: '20px', backgroundColor: '#fff3cd', border: '1px solid #ffeeba', borderRadius: '15px', marginTop:'20px'}}>
-                  <strong style={{color:'#856404', display:'block', marginBottom:'5px'}}>⚠️ Client History</strong>
-                  <p style={{fontSize: '0.95em', margin: 0, color:'#856404', lineHeight:'1.4'}}>Client previously requested to change bananas with pomegranate. Keep an eye on fruit selection.</p>
-                </div>
-                <button style={styles.saveButton} onClick={handleSavePlan}>Save Plan ✓</button>
-            </div>
-        </div>
+
+        {/* 3. Pass the dynamic client data to the banner */}
+        <ClientInfoBanner client={clientData} />
       </div>
+
+      <div style={styles.mainColumn}>
+        {meals.map(meal => (
+          <MealCard 
+            key={meal.id} 
+            meal={meal} 
+            onOpenAddModal={handleOpenModal} 
+            onDeleteItem={handleDeleteItem}
+            onToggleItem={handleToggleItem}
+            onEditMeal={handleEditMeal}
+          />
+        ))}
+        <button style={{padding: '10px 20px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', alignSelf: 'flex-start'}}>+ Add New Meal Time</button>
+      </div>
+
+      <div style={styles.sidebar}>
+        <GlobalNutritionSummary meals={meals} />
+        <div style={{padding: '15px', backgroundColor: '#fff3cd', border: '1px solid #ffeeba', borderRadius: '8px'}}>
+          <strong>⚠️ Warnings / History:</strong>
+          <p style={{fontSize: '0.9em', margin: '5px 0'}}>Client changed banana with pomegranate 2 times.</p>
+        </div>
+        <button style={{width: '100%', padding: '15px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '5px', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 6px rgba(0,0,0,0.1)'}}>
+          Create Plan (Save)
+        </button>
+      </div>
+
       <AddMealModal isOpen={isModalOpen} onClose={handleCloseModal} onAdd={handleAddFood} />
     </div>
   );

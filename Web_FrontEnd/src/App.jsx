@@ -7,6 +7,7 @@ import AddClient from './Pages/AddClient';
 import ClientDetails from './Pages/ClientDetails';
 import EditClient from './Pages/EditClient';
 import MealPlanner from './Pages/MealPlanner';
+import ClientMeals from './Pages/ClientMeals';
 
 export default function App() {
   return (
@@ -19,6 +20,7 @@ export default function App() {
         <Route path="/client-details" element={<ClientDetails />} />
         <Route path="/edit-client" element={<EditClient />} />
         <Route path="/meal-planner" element={<MealPlanner />} />
+        <Route path="/client-meals" element={<ClientMeals />} />
       </Routes>
     </BrowserRouter>
   );
