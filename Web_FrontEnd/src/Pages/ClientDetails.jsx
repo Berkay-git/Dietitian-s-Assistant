@@ -31,7 +31,7 @@ export default function ClientDetails() {
           <p style={styles.clientStatus}>{params.status} Member</p>
 
           <button style={styles.updateButton} onClick={handleUpdateClick}>
-             ✏️ Update Details
+              ✏️ Update Details
           </button>
 
           <div style={styles.sectionHeader}>
@@ -59,9 +59,28 @@ export default function ClientDetails() {
           </div>
         </div>
 
-        <button style={styles.createPlanButton} onClick={() => navigate('/meal-planner', { state: params })}>
-          <span style={styles.buttonEmoji}>🥗</span><span style={styles.buttonText}>Create Meal Plan</span>
-        </button>
+        {/* NEW BUTTON ROW */}
+        <div style={styles.actionButtonRow}>
+          
+          {/* 1. View Meal Plans Button */}
+          <button 
+            style={styles.viewPlanButton} 
+            onClick={() => navigate('/client-meals', { state: { client: params } })}
+          >
+            <span style={styles.buttonEmoji}>📅</span>
+            <span style={styles.buttonText}>View Plans</span>
+          </button>
+
+          {/* 2. Create Meal Plan Button */}
+          <button 
+            style={styles.createPlanButton} 
+            onClick={() => navigate('/meal-planner', { state: { client: params } })}
+          >
+            <span style={styles.buttonEmoji}>🥗</span>
+            <span style={styles.buttonText}>Create Plan</span>
+          </button>
+          
+        </div>
 
       </div>
     </div>
@@ -92,7 +111,16 @@ const styles = {
   gridItem: { width: '46%', backgroundColor: '#f9f9f9', padding: '15px', borderRadius: '10px', display: 'flex', flexDirection: 'column', alignItems: 'center', boxSizing: 'border-box' },
   gridLabel: { fontSize: '14px', color: '#666', marginBottom: '5px' },
   gridValue: { fontSize: '16px', color: '#333', fontWeight: 'bold' },
-  createPlanButton: { width: '100%', backgroundColor: '#28a745', padding: '20px', borderRadius: '15px', display: 'flex', flexDirection: 'column', alignItems: 'center', border: 'none', cursor: 'pointer', boxShadow: '0 4px 10px rgba(40, 167, 69, 0.3)' },
-  buttonEmoji: { fontSize: '30px', marginBottom: '5px' },
-  buttonText: { color: '#fff', fontSize: '20px', fontWeight: 'bold' }
+  
+  // NEW STYLES FOR BUTTON ROW
+  actionButtonRow: { width: '100%', display: 'flex', gap: '15px', justifyContent: 'space-between' },
+  
+  // Create Plan (Green)
+  createPlanButton: { flex: 1, backgroundColor: '#28a745', padding: '15px', borderRadius: '15px', display: 'flex', flexDirection: 'column', alignItems: 'center', border: 'none', cursor: 'pointer', boxShadow: '0 4px 10px rgba(40, 167, 69, 0.3)' },
+  
+  // View Plan (Blue)
+  viewPlanButton:   { flex: 1, backgroundColor: '#007AFF', padding: '15px', borderRadius: '15px', display: 'flex', flexDirection: 'column', alignItems: 'center', border: 'none', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0, 122, 255, 0.3)' },
+  
+  buttonEmoji: { fontSize: '24px', marginBottom: '5px' },
+  buttonText: { color: '#fff', fontSize: '16px', fontWeight: 'bold' }
 };
