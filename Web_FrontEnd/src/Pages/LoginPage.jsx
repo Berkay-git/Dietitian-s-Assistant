@@ -94,7 +94,7 @@ export default function LoginPage() {
   return (
     <div style={styles.container}>
       <div style={styles.card}>
-        <h1 style={styles.title}>Welcome Back</h1>
+        <h1 style={styles.title}>Welcome to the Dietitian's Assistant</h1>
         <p style={styles.subtitle}>Sign in to manage your clients</p>
 
         {error && <div style={styles.errorBox}>{error}</div>}

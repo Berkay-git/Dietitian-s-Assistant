@@ -15,7 +15,6 @@ export default function Register() {
     lower: false,
     number: false,
     match: false,
-    noRestrictedChars: true // True means "Good" (doesn't contain bad chars)
   });
 
   // Handle Input Change
@@ -28,13 +27,12 @@ export default function Register() {
     const { password, confirmPassword } = formData;
     
     setValidations({
-      length: password.length >= 8,
+      length: password.length >= 8 && password.length<=14,
       upper: /[A-Z]/.test(password),
       lower: /[a-z]/.test(password),
       number: /\d/.test(password),
       match: password !== '' && password === confirmPassword,
       // Check for '*' and 'SELECT' (case insensitive for SELECT)
-      noRestrictedChars: !password.includes('*') && !password.toUpperCase().includes('SELECT')
     });
   }, [formData.password, formData.confirmPassword]);
 
@@ -183,11 +181,10 @@ export default function Register() {
           {/* REAL-TIME VALIDATION BOX */}
           <div style={styles.validationBox}>
              <strong style={{fontSize:'12px', color:'#555', display:'block', marginBottom:'8px'}}>Password Requirements:</strong>
-             <Requirement met={validations.length} text="At least 8 characters" />
+             <Requirement met={validations.length} text="Must be between 8-14 characters" />
              <Requirement met={validations.upper} text="At least one uppercase letter (A-Z)" />
              <Requirement met={validations.lower} text="At least one lowercase letter (a-z)" />
              <Requirement met={validations.number} text="At least one number (0-9)" />
-             <Requirement met={validations.noRestrictedChars} text="Cannot contain '*' or 'SELECT'" />
              <div style={{borderTop:'1px solid #ddd', margin:'5px 0'}}></div>
              <Requirement met={validations.match} text="Passwords match" />
           </div>

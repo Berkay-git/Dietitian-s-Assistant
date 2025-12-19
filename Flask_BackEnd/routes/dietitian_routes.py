@@ -7,7 +7,10 @@ import jwt #Session yerine token, Web+Mobil için ideal,  pip install PyJWT (Bac
 from datetime import datetime, timedelta, date
 from db_config import Config
 
+from models.models import Client # Import client details
 from services.dailymealplan_service import *
+from models.models import Client, PhysicalDetails, MedicalDetails
+from services.client_service import ClientService
 
 dietitian_bp = Blueprint('dietitian', __name__)
 
@@ -173,3 +176,92 @@ def register():
     except Exception as e:
         print(f"Register Error: {str(e)}")
         return jsonify({'error': 'Sunucu hatası'}), 500
+    
+
+@dietitian_bp.route('/clients', methods=['GET'])
+def get_my_clients():
+    try:
+        # 1. Get the Dietitian's ID from the request (sent by frontend)
+        dietitian_id = request.args.get('dietitian_id')
+        
+        if not dietitian_id:
+            return jsonify({'error': 'Dietitian ID is required'}), 400
+
+        # 2. Query the database: "Select * FROM Client WHERE AssignedDietitianID = ..."
+        clients = Client.query.filter_by(AssignedDietitianID=dietitian_id, IsActive=True).all()
+        
+        # 3. Convert to JSON (using the .to_dict() method we created)
+        client_list = [client.to_dict() for client in clients]
+        
+        return jsonify(client_list), 200
+        
+    except Exception as e:
+        print(f"Error fetching clients: {e}")
+        return jsonify({'error': 'Server error'}), 500
+    
+
+
+@dietitian_bp.route('/client-details/<client_id>', methods=['GET'])
+def get_client_full_details(client_id):
+    try:
+        # 1. Fetch Basic Client Info
+        client = Client.query.filter_by(ClientID=client_id).first()
+        if not client:
+            return jsonify({'error': 'Client not found'}), 404
+
+        # 2. Fetch Physical Details (Get the most recent one if multiple exist)
+        # Assuming one-to-one for simplicity, or fetching the first found
+        physical = PhysicalDetails.query.filter_by(ClientID=client_id).first()
+
+        # 3. Fetch Medical Details
+        medical = MedicalDetails.query.filter_by(ClientID=client_id).first()
+
+        # 4. Combine into one JSON object
+        response_data = {
+            'id': client.ClientID,
+            'name': client.Name,
+            'email': client.Email,
+            'dob': client.DOB,
+            'gender': client.Sex,
+            'status': 'Active' if client.IsActive else 'Inactive',
+            # Physical Data (Handle if None)
+            'weight': float(physical.Weight) if physical and physical.Weight else '-',
+            'height': float(physical.Height) if physical and physical.Height else '-',
+            'bodyfat': float(physical.BodyFat) if physical and physical.BodyFat else '-',
+            'activity': physical.ActivityStatus if physical else 'Not Set',
+            # Medical Data (Handle if None)
+            'medicalReport': medical.MedicalData if medical else 'No records found',
+            'goal': 'General Health' # Placeholder (Add to DB if needed)
+        }
+
+        return jsonify(response_data), 200
+
+    except Exception as e:
+        print(f"Error fetching details: {e}")
+        return jsonify({'error': 'Server error'}), 500
+    
+
+@dietitian_bp.route('/clients', methods=['POST'])
+def add_client():
+    try:
+        data = request.get_json()
+        
+        # We expect the frontend to send the dietitian_id inside the body
+        dietitian_id = data.get('dietitian_id')
+        
+        if not dietitian_id:
+            return jsonify({'error': 'Dietitian ID is missing'}), 400
+
+        # Call the Service
+        success, message, client = ClientService.create_client(dietitian_id, data)
+        
+        if success:
+            return jsonify({
+                'message': message,
+                'client': client.to_dict()
+            }), 201
+        else:
+            return jsonify({'error': message}), 400
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500

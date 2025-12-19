@@ -1,24 +1,63 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 export default function Dashboard() {
   const navigate = useNavigate();
 
-  // MOCK DATA (Veriler aynen duruyor)
-  const clients = [
-    { id: '1', name: 'Ahmet Yılmaz', dob: '12/05/1990', gender: 'Male', medicalReport: 'Tip 2 Diyabet', goal: 'Weight Loss', weight: '85', height: '180', bodyfat: '22', activity: 'Sedentary', status: 'Active', lastVisit: '12.12.2025' },
-    { id: '2', name: 'Ayşe Demir', dob: '24/08/1995', gender: 'Female', medicalReport: 'Çölyak', goal: 'Muscle Gain', weight: '62', height: '165', bodyfat: '28', activity: 'Moderately Active', status: 'Pending', lastVisit: '10.12.2025' },
-    { id: '3', name: 'Mehmet Kaya', dob: '01/01/1980', gender: 'Male', medicalReport: 'Yok', goal: 'Healthy Living', weight: '95', height: '175', bodyfat: '30', activity: 'Active', status: 'Active', lastVisit: '09.12.2025' },
-  ];
+  // 1. STATE MANAGEMENT
+  const [clients, setClients] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
+  // 2. FETCH REAL DATA ON LOAD
+  useEffect(() => {
+    const fetchClients = async () => {
+      // Get the Dietitian ID saved during Login
+      const dietitianId = localStorage.getItem('user_id');
+
+      if (!dietitianId) {
+        // If no ID, they aren't logged in -> Send to Login
+        navigate('/'); 
+        return;
+      }
+
+      try {
+        const response = await fetch(`http://localhost:5000/api/dietitian/clients?dietitian_id=${dietitianId}`);
+        const data = await response.json();
+
+        if (response.ok) {
+          setClients(data); // Set the real data!
+        } else {
+          setError('Failed to load clients.');
+        }
+      } catch (err) {
+        console.error(err);
+        setError('Error connecting to server.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchClients();
+  }, [navigate]);
+
+  // Logout Logic
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user_id');
+    localStorage.removeItem('user_name');
+    navigate('/'); 
+  };
+
+  // Navigation Handlers
   const handleClientClick = (client) => {
+    // We pass the entire client object to the next page
     navigate('/client-details', { state: client });
   };
 
-  // Logout Fonksiyonu 
-  const handleLogout = () => {
-    navigate('/'); 
-  };
+
+  if (loading) return <div style={styles.centerMsg}>Loading your clients...</div>;
+  if (error) return <div style={styles.centerMsg}>Error: {error}</div>;
 
   return (
     <div style={styles.mainContainer}>
@@ -28,38 +67,45 @@ export default function Dashboard() {
         <div style={styles.header}>
           <h1 style={styles.title}>My Clients</h1>
           <div style={styles.headerButtons}>
-               {}
-               <button style={styles.logoutButton} onClick={handleLogout}>
-                 Logout
-               </button>
+               <button style={styles.logoutButton} onClick={handleLogout}>Logout</button>
+               {/* Note: This button needs to create a user in DB, we'll do that next */}
                <button style={styles.addButton} onClick={() => navigate('/add-client')}>
                  + Insert Client
                </button>
           </div>
         </div>
 
-        {}
+        {/* Client List */}
         <div style={styles.list}>
-          {clients.map((client) => (
-            <div 
-              key={client.id} 
-              style={styles.card} 
-              onClick={() => handleClientClick(client)}
-            >
-              <div>
-                <h3 style={styles.clientName}>{client.name}</h3>
-                <p style={styles.clientDate}>Last Visit: {client.lastVisit}</p>
-              </div>
-              
-              <span style={{
-                ...styles.statusBadge,
-                backgroundColor: client.status === 'Active' ? '#e3f2fd' : '#fff3e0',
-                color: client.status === 'Active' ? '#007AFF' : '#FF9800'
-              }}>
-                {client.status}
-              </span>
+          {clients.length === 0 ? (
+            <div style={{textAlign:'center', color:'#999', marginTop:'20px'}}>
+              No clients found. Click "+ Insert Client" to add one!
             </div>
-          ))}
+          ) : (
+            clients.map((client) => (
+              <div 
+                key={client.id} 
+                style={styles.card} 
+                onClick={() => handleClientClick(client)}
+              >
+                <div>
+                  <h3 style={styles.clientName}>{client.name}</h3>
+                  {/* GRUP ILE KONUŞUP NE GÖSTERMESİ GEREKTİĞİNİ KARAKLAŞTIR KARAR1 */}
+                  <p style={styles.clientDate}>DOB: {client.dob || 'N/A'}</p>
+                </div>
+                
+                <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
+                  <span style={{
+                    ...styles.statusBadge,
+                    backgroundColor: client.status === 'Active' ? '#e3f2fd' : '#fff3e0',
+                    color: client.status === 'Active' ? '#007AFF' : '#FF9800'
+                  }}>
+                    {client.status || 'Active'}
+                  </span>
+                </div>
+              </div>
+            ))
+          )}
         </div>
 
       </div>
@@ -68,87 +114,18 @@ export default function Dashboard() {
 }
 
 const styles = {
-  mainContainer: {
-    padding: '40px 20px',
-    backgroundColor: '#f5f5f5',
-    minHeight: '100vh',
-    fontFamily: 'Arial, sans-serif',
-    display: 'flex',          
-    justifyContent: 'center'  // YATAYDA ORTALA
-  },
-  contentContainer: {
-    width: '100%',            
-    maxWidth: '800px',        // GENİŞLİĞİ SINIRLA (Çok yayılmasın)
-  },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '30px'
-  },
-  headerButtons: {
-    display: 'flex',
-    gap: '10px'
-  },
-  title: {
-    fontSize: '28px',
-    fontWeight: 'bold',
-    color: '#333',
-    margin: 0
-  },
-  logoutButton: {
-    padding: '12px 20px',
-    backgroundColor: '#ff4d4f', // Kırmızı
-    color: 'white',
-    borderRadius: '8px',
-    border: 'none',
-    fontWeight: 'bold',
-    cursor: 'pointer',
-    fontSize: '14px',
-    transition: '0.3s'
-  },
-  addButton: {
-    padding: '12px 20px',
-    backgroundColor: '#007AFF', // Mavi
-    color: 'white',
-    borderRadius: '8px',
-    border: 'none',
-    fontWeight: 'bold',
-    cursor: 'pointer',
-    fontSize: '14px',
-    transition: '0.3s'
-  },
-  list: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '15px'
-  },
-  card: {
-    backgroundColor: 'white',
-    padding: '25px',
-    borderRadius: '15px',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    boxShadow: '0 4px 10px rgba(0,0,0,0.05)',
-    cursor: 'pointer',
-    transition: 'transform 0.2s'
-  },
-  clientName: {
-    fontSize: '18px',
-    fontWeight: '600',
-    color: '#333',
-    margin: '0 0 5px 0'
-  },
-  clientDate: {
-    fontSize: '14px',
-    color: '#888',
-    margin: 0
-  },
-  statusBadge: {
-    padding: '6px 12px',
-    borderRadius: '20px',
-    fontSize: '13px',
-    fontWeight: 'bold'
-  }
+  mainContainer: { padding: '40px 20px', backgroundColor: '#f5f5f5', minHeight: '100vh', fontFamily: 'Arial, sans-serif', display: 'flex', justifyContent: 'center' },
+  contentContainer: { width: '100%', maxWidth: '800px' },
+  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' },
+  headerButtons: { display: 'flex', gap: '10px' },
+  title: { fontSize: '28px', fontWeight: 'bold', color: '#333', margin: 0 },
+  logoutButton: { padding: '12px 20px', backgroundColor: '#ff4d4f', color: 'white', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px', transition: '0.3s' },
+  addButton: { padding: '12px 20px', backgroundColor: '#007AFF', color: 'white', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px', transition: '0.3s' },
+  list: { display: 'flex', flexDirection: 'column', gap: '15px' },
+  card: { backgroundColor: 'white', padding: '25px', borderRadius: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 4px 10px rgba(0,0,0,0.05)', cursor: 'pointer', transition: 'transform 0.2s' },
+  clientName: { fontSize: '18px', fontWeight: '600', color: '#333', margin: '0 0 5px 0' },
+  clientDate: { fontSize: '14px', color: '#888', margin: 0 },
+  statusBadge: { padding: '6px 12px', borderRadius: '20px', fontSize: '13px', fontWeight: 'bold' },
+  planButton: { padding: '8px 12px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold', marginRight: '10px' },
+  centerMsg: { textAlign: 'center', marginTop: '50px', fontSize: '18px', color: '#666' }
 };
