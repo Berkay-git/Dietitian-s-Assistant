@@ -154,6 +154,7 @@ def get_meal_items_by_mealid(meal_id):
                 'canChange': meal_item.canChange,
                 'isFollowed': meal_item.isFollowed,
                 'isLLM': meal_item.isLLM,
+                'changedItem': meal_item.ChangedItem,
             })
         
         # After all return the meal data (We will call iteration on meal_service to get meal details)

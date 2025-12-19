@@ -1,5 +1,6 @@
 import { View, Text, StyleSheet } from "react-native";
 import Svg, { Circle } from "react-native-svg";
+import { Colors } from "../../styles/colors";
 
 interface MacroData {
   consumed: number;
@@ -98,13 +99,11 @@ export default function CalorieSummary({ calories, macros }: Props) {
 }
 
 const styles = StyleSheet.create({
-  /* 🔴 ANA FARK BURADA */
   container: {
-    backgroundColor: "#121212",
+    backgroundColor: '#DDE4E8',
     paddingVertical: 10,
     paddingHorizontal: 12,
     marginBottom: 6,
-    // ❌ borderRadius YOK
   },
 
   ringContainer: {
@@ -119,11 +118,11 @@ const styles = StyleSheet.create({
   remainingText: {
     fontSize: 22,
     fontWeight: "700",
-    color: "#FFFFFF",
+    color: "#000000",
   },
   remainingLabel: {
     fontSize: 11,
-    color: "#AAAAAA",
+    color: "#000000",
   },
 
   macrosRow: {
@@ -135,7 +134,7 @@ const styles = StyleSheet.create({
   },
   macroLabel: {
     fontSize: 11,
-    color: "#CCCCCC",
+    color: "#000000",
     marginBottom: 2,
     textAlign: "center",
   },
@@ -149,7 +148,7 @@ const styles = StyleSheet.create({
   },
   macroValue: {
     fontSize: 10,
-    color: "#AAAAAA",
+    color: "#000000",
     marginTop: 2,
     textAlign: "center",
   },

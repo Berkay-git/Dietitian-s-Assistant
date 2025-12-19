@@ -11,6 +11,7 @@ interface MealItem {
   canChange?: boolean; // For storing if the item can be changed or not (Alternative checking)
   isFollowed?: boolean | null; // For storing if the item is followed or not (Feedback checking)
   isLLM?: boolean | null; // For storing if the item is suggested by LLM
+  changedItem?: MealItem | null; // For storing the alternative item if any
 }
 
 interface MealDetailModalProps {
@@ -46,19 +47,39 @@ export default function MealDetailModal({
   const someItemsChangeable = changeableItems.length > 0 && changeableItems.length < items.length;
   const noItemsChangeable = changeableItems.length === 0;
 
-  // ✅ Feedback durumunu kontrol eden fonksiyon - isLLM parametresi eklendi
-  const getFeedbackStatus = (isFollowed: boolean | null | undefined, isLLM: boolean | null | undefined) => {
-    if (isFollowed === null || isFollowed === undefined) {
-      return { text: '⏳ Pending', color: '#FF9800' }; // Henüz feedback verilmedi
-    } else if (isFollowed === true) {
-      return { text: '✓ Followed', color: '#4CAF50' }; // Yendi
-    } else if (isFollowed === false && (isLLM === null || isLLM === undefined || isLLM === false)) {
-      return { text: '✗ Not Followed', color: '#F44336' }; // Yenmedi
-    } else if (isFollowed === false && isLLM === true) {
-      return { text: '⚠️ Meal is modified with AI', color: '#FF5722' }; // LLM alternatif alındı
-    }
-    return { text: '⏳ Pending', color: '#FF9800' }; // Default
-  };
+const getFeedbackStatus = (
+  isFollowed: boolean | null | undefined, 
+  isLLM: boolean | null | undefined, 
+  changedItem: MealItem | null | undefined
+) => {
+  // Henüz feedback verilmedi
+  if (isFollowed === null || isFollowed === undefined) {
+    return { text: '⏳ Pending', color: '#FF9800' };
+  }
+  
+  // Yemek yenildi (takip edildi)
+  else if (isFollowed === true) {
+    return { text: '✓ Followed', color: '#4CAF50' };
+  }
+  
+  // Yemek yenilmedi ama AI ile değiştirildi
+  else if (isFollowed === false && isLLM === true) {
+    return { text: '⚠️ Modified with AI', color: '#FF5722' };
+  }
+  
+  // Yemek yenilmedi ama alternatif alındı
+  else if (isFollowed === false && (changedItem !== null || changedItem !== undefined) && isLLM === false) {
+    return { text: '⚠️ Changed Manually', color: '#9C27B0' };
+  }
+  
+  // Yemek hiç yenilmedi (takip edilmedi)
+  else if (isFollowed === false) {
+    return { text: '✗ Not Followed', color: '#F44336' };
+  }
+  
+  // Default durum
+  return { text: '⏳ Pending', color: '#FF9800' };
+};
 
   return (
     <Modal
@@ -119,7 +140,7 @@ export default function MealDetailModal({
             {/* Meal Items Detail */}
             <Text style={styles.sectionTitle}>Food Details ({items.length} items)</Text>
             {items.map((item, index) => {
-              const feedbackStatus = getFeedbackStatus(item.isFollowed, item.isLLM);
+              const feedbackStatus = getFeedbackStatus(item.isFollowed, item.isLLM, item.changedItem);
               
               return (
                 <View key={index} style={styles.itemCard}>

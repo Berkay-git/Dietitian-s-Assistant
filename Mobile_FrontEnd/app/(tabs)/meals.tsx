@@ -8,8 +8,6 @@ import { useAuth } from '../../context/AuthContext';
 import { calculateDailySummary } from "../../components/common/calculator";
 import CalorieSummary from "../../components/common/CalorieSummary";
 
-
-
 export default function Meals() {
   const [selectedMeal, setSelectedMeal] = useState<any>(null);
   const [modalVisible, setModalVisible] = useState(false);
@@ -17,6 +15,7 @@ export default function Meals() {
 
   const { dailyMealPlan, loading, error, fetchMealPlan, refreshMealPlan } = useMeals();
   const { user } = useAuth(); // Get logged in user info
+
 
   useEffect(() => {
     // Fetch today's meal plan when component mounts
@@ -51,7 +50,6 @@ export default function Meals() {
     // TODO: Implement feedback logic
   };
 
-
   if (loading && !dailyMealPlan) {
     return (
       <View style={[mealsStyles.container, { justifyContent: 'center', alignItems: 'center' }]}>
@@ -84,18 +82,31 @@ export default function Meals() {
 
   const summary = {
     calories: {
-      total: rawSummary.calories.target,  
-      consumed: rawSummary.calories.consumed,
-      remaining: rawSummary.calories.remaining,
+      total: Math.round(rawSummary.calories.target),  
+      consumed: Math.round(rawSummary.calories.consumed),
+      remaining: Math.round(rawSummary.calories.remaining),
     },
-    macros: rawSummary.macros,
+    macros: {
+      carb: {
+        consumed: Math.round(rawSummary.macros.carb.consumed * 10) / 10,
+        target: Math.round(rawSummary.macros.carb.target * 10) / 10,
+      },
+      protein: {
+        consumed: Math.round(rawSummary.macros.protein.consumed * 10) / 10,
+        target: Math.round(rawSummary.macros.protein.target * 10) / 10,
+      },
+      fat: {
+        consumed: Math.round(rawSummary.macros.fat.consumed * 10) / 10,
+        target: Math.round(rawSummary.macros.fat.target * 10) / 10,
+      },
+    },
   };
 
 
   return (
     <View style={mealsStyles.container}>
+
       {/* Sabit Header */}
-      
       <CalorieSummary
         calories={summary.calories}
         macros={{
@@ -133,12 +144,15 @@ export default function Meals() {
         <MealDetailModal
           visible={modalVisible}
           onClose={handleCloseModal}
-          mealType={selectedMeal.mealName}
+          mealName={selectedMeal.mealName}
           timeRange={selectedMeal.timeRange}
           totalCalories={selectedMeal.totalCalories}
+          totalProtein={selectedMeal.totalProtein}
+          totalCarb={selectedMeal.totalCarb} 
+          totalFat={selectedMeal.totalFat} 
           items={selectedMeal.items}
           isCompleted={selectedMeal.isCompleted}
-          canChange={true} // TODO: Get from backend
+          canChange={selectedMeal.canChange}
         />
       )}
     </View>
