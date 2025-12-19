@@ -68,7 +68,7 @@ const getFeedbackStatus = (
   }
   
   // Yemek yenilmedi ama alternatif alındı
-  else if (isFollowed === false && (changedItem !== null || changedItem !== undefined) && isLLM === false) {
+  else if (isFollowed === false && changedItem != null  && isLLM === false) {
     return { text: '⚠️ Changed Manually', color: '#9C27B0' };
   }
   
