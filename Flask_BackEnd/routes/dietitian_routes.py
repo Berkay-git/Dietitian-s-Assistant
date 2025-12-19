@@ -4,8 +4,10 @@
 from flask import Blueprint, request, jsonify
 from services.allServices import AuthService
 import jwt #Session yerine token, Web+Mobil için ideal,  pip install PyJWT (Backend terminali içerisinde yaz, genel klasöre yazma)
-import datetime
+from datetime import datetime, timedelta, date
 from db_config import Config
+
+from services.dailymealplan_service import *
 
 dietitian_bp = Blueprint('dietitian', __name__)
 
@@ -44,15 +46,16 @@ def login():
 
         if not success:
             return jsonify({'error': message}), 401
-        
+
         # Token oluştur
         token = jwt.encode({
             'user_id': user.DietitianID if found_user_type == 'dietitian' else user.ClientID,
             'user_type': found_user_type,
             'email_hash': user.Email,
-            'exp': datetime.datetime.utcnow() + datetime.timedelta(days=7)
+            'exp': datetime.utcnow() + timedelta(days=7)
         }, Config.SECRET_KEY, algorithm='HS256')
-        
+    
+
         return jsonify({
             'message': message,
             'token': token,
@@ -65,7 +68,78 @@ def login():
         }), 200
         
     except Exception as e:
-        #DEBUGGING  print(f"!!! EXCEPTION !!!")
-        #DEBUGGING print(f"Exception type: {type(e).__name__}")
-        #DEBUGGING  print(f"Exception message: {str(e)}")
+        print(f"!!! EXCEPTION !!!")
+        print(f"Exception type: {type(e).__name__}")
+        print(f"Exception message: {str(e)}")
         return jsonify({'error': 'Sunucu hatası'}), 500
+    
+
+@dietitian_bp.route('/meals', methods=['GET'])
+def getMeals():
+    """
+    Get meal plan for a client on a specific date (today/given date [Past/Future])
+    
+    Returns:
+        - Daily meal plan with all meals and totals
+    """
+    try:
+        # Get client_id from query parameters
+        client_id = request.args.get('client_id')
+        
+        if not client_id:
+            return jsonify({'error': 'client_id is required'}), 400
+        
+        # Get plan_date from query parameters, default to today
+        plan_date_str = request.args.get('plan_date')
+        
+        if plan_date_str:
+            try:
+                # Parse date string to date object
+                plan_date = datetime.strptime(plan_date_str, '%Y-%m-%d').date()
+            except ValueError:
+                return jsonify({'error': 'Geçersiz tarih formatı. YYYY-MM-DD kullanın'}), 400
+        else:
+            # Default to today
+            plan_date = date.today()
+        
+        meal_plan = get_daily_meal_plan(client_id, plan_date)
+        
+        if not meal_plan:
+            return jsonify({'error': 'Bu tarih için meal plan bulunamadı'}), 404
+        
+        return jsonify({
+            'success': True,
+            'data': meal_plan
+        }), 200
+        
+    except Exception as e:
+        print(f"Error in getMeals: {str(e)}")
+        return jsonify({'error': 'Sunucu hatası'}), 500
+
+
+@dietitian_bp.route('/meals/available-dates', methods=['GET'])
+def getAvailableDates():
+    """
+    Get all available dates that have meal plans for a client
+
+    Returns:
+        - List of dates in ISO format
+    """
+    try:
+        client_id = request.args.get('client_id')
+        
+        if not client_id:
+            return jsonify({'error': 'client_id is required'}), 400
+        
+        #All dates that client has meal plans (it will be shown in date picker box in frontend)
+        #ISO formatted 'YYYY-MM-DD'
+        available_dates = get_available_plan_dates(client_id)
+        
+        return jsonify({
+            'success': True,
+            'dates': available_dates
+        }), 200
+        
+    except Exception as e:
+        print(f"Error in getAvailableDates: {str(e)}")
+        return jsonify({'error': 'Server error'}), 500

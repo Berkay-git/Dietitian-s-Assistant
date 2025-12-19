@@ -1,80 +1,33 @@
-import { View, Text, ScrollView } from 'react-native';
-import { useState } from 'react';
+import { View, Text, ScrollView, ActivityIndicator, RefreshControl } from 'react-native';
+import { useState, useEffect } from 'react';
 import MealCard from '../../components/common/MealCard';
 import MealDetailModal from '../../components/common/MealCardModal';
 import { mealsStyles } from '../../styles/screens/MealsPageStyles';
+import { useMeals } from '../../context/MealsContext';
+import { useAuth } from '../../context/AuthContext';
 
 export default function Meals() {
-
   const [selectedMeal, setSelectedMeal] = useState<any>(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Mock data - 6 öğün örneği (athlete için)
-  const mealsData = [
-    {
-      mealType: 'Breakfast',
-      timeRange: '08:00 - 10:00',
-      totalCalories: 552,
-      isCompleted: true,
-      items: [
-        { name: 'Basmati Rice', portion: 'Ece Basmati Rice, 152 grams', calories: 552 },
-      ],
-    },
-    {
-      mealType: 'Morning Snack',
-      timeRange: '11:00 - 11:15',
-      totalCalories: 654,
-      isCompleted: false,
-      items: [
-        { name: 'Chicken Breast', portion: '100 grams', calories: 350 },
-        { name: 'Almonds', portion: '30 grams', calories: 304 },
-      ],
-    },
-    {
-      mealType: 'Lunch',
-      timeRange: '12:30 - 13:30',
-      totalCalories: 752,
-      isCompleted: false,
-      items: [
-        { name: 'Grilled Salmon', portion: '150 grams', calories: 280 },
-        { name: 'Quinoa', portion: '200 grams', calories: 222 },
-        { name: 'Broccoli', portion: '150 grams', calories: 50 },
-        { name: 'Olive Oil', portion: '1 tbsp', calories: 200 },
-      ],
-    },
-    {
-      mealType: 'Afternoon Snack',
-      timeRange: '15:30 - 16:00',
-      totalCalories: 300,
-      isCompleted: false,
-      items: [
-        { name: 'Greek Yogurt', portion: '200g', calories: 200 },
-        { name: 'Honey', portion: '1 tbsp', calories: 100 },
-      ],
-    },
-    {
-      mealType: 'Dinner',
-      timeRange: '19:00 - 20:00',
-      totalCalories: 650,
-      isCompleted: false,
-      items: [
-        { name: 'Chicken Thigh', portion: '200 grams', calories: 400 },
-        { name: 'Sweet Potato', portion: '150 grams', calories: 150 },
-        { name: 'Green Salad', portion: '100 grams', calories: 100 },
-      ],
-    },
-    {
-      mealType: 'Evening Snack',
-      timeRange: '21:30 - 22:00',
-      totalCalories: 250,
-      isCompleted: false,
-      items: [
-        { name: 'Protein Shake', portion: '250ml', calories: 250 },
-      ],
-    },
-  ];
+  const { dailyMealPlan, loading, error, fetchMealPlan, refreshMealPlan } = useMeals();
+  const { user } = useAuth(); // Get logged in user info
 
-const handleCardPress = (meal: any) => {
+  useEffect(() => {
+    // Fetch today's meal plan when component mounts
+    if (user?.user_id) {
+      fetchMealPlan(user.user_id);
+    }
+  }, [user]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await refreshMealPlan();
+    setRefreshing(false);
+  };
+
+  const handleCardPress = (meal: any) => {
     setSelectedMeal(meal);
     setModalVisible(true);
   };
@@ -86,36 +39,91 @@ const handleCardPress = (meal: any) => {
 
   const handleGetAlternative = (mealType: string) => {
     console.log(`Get alternative for ${mealType}`);
+    // TODO: Implement alternative meal logic
   };
 
   const handleGiveFeedback = (mealType: string) => {
     console.log(`Give feedback for ${mealType}`);
+    // TODO: Implement feedback logic
   };
+
+  // Calculate remaining macros
+  const getRemainingMacros = () => {
+    if (!dailyMealPlan) return { calories: 0, protein: 0, carb: 0, fat: 0 };
+  
+    const dailyTarget = {
+      calories: dailyMealPlan.dailyTotals.calories,
+      protein: dailyMealPlan.dailyTotals.protein,
+      carb: dailyMealPlan.dailyTotals.carb,
+      fat: dailyMealPlan.dailyTotals.fat
+    };
+
+    return { //Rastgele 100 ve 10 var
+      calories:dailyTarget.calories - 100, // Feedbacki verilen bir item olunca burayı updatele
+      protein:dailyTarget.protein - 10 ,
+      carb:dailyTarget.carb - 10,
+      fat:dailyTarget.fat - 10   // Feedbacki verilen bir item olunca burayı updatele
+    };
+  };
+
+  if (loading && !dailyMealPlan) {
+    return (
+      <View style={[mealsStyles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color="#007AFF" />
+        <Text style={{ marginTop: 10 }}>Yükleniyor...</Text>
+      </View>
+    );
+  }
+
+  if (error && !dailyMealPlan) {
+    return (
+      <View style={[mealsStyles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <Text style={{ color: 'red', fontSize: 16 }}>{error}</Text>
+      </View>
+    );
+  }
+
+  if (!dailyMealPlan) {
+    return (
+      <View style={[mealsStyles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <Text style={{ fontSize: 16 }}>Meal plan bulunamadı</Text>
+      </View>
+    );
+  }
+
+  const remaining = getRemainingMacros();
 
   return (
     <View style={mealsStyles.container}>
       {/* Sabit Header */}
       <View style={mealsStyles.macroBox}>
-        <Text style={mealsStyles.macroTitle}>1600 Remaining</Text>
-        <Text style={mealsStyles.macroSubtitle}>Carbs • Protein • Fat</Text>
+        <Text style={mealsStyles.macroTitle}>
+          {remaining.calories} Remaining
+        </Text>
+        <Text style={mealsStyles.macroSubtitle}>
+          {remaining.carb}g Carbs • {remaining.protein}g Protein • {remaining.fat}g Fat
+        </Text>
       </View>
 
       {/* Scrollable Meal Cards */}
       <ScrollView 
         style={mealsStyles.scrollContainer}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       >
-        {mealsData.map((meal, index) => (
+        {dailyMealPlan.meals.map((meal, index) => (
           <MealCard
-            key={index}
-            mealType={meal.mealType}
+            key={meal.mealID || index}
+            mealType={meal.mealName}
             timeRange={meal.timeRange}
             totalCalories={meal.totalCalories}
             items={meal.items}
             isCompleted={meal.isCompleted}
             onPress={() => handleCardPress(meal)}
-            onGetAlternative={() => handleGetAlternative(meal.mealType)}
-            onGiveFeedback={() => handleGiveFeedback(meal.mealType)}
+            onGetAlternative={() => handleGetAlternative(meal.mealName)}
+            onGiveFeedback={() => handleGiveFeedback(meal.mealName)}
           />
         ))}
       </ScrollView>
@@ -125,12 +133,12 @@ const handleCardPress = (meal: any) => {
         <MealDetailModal
           visible={modalVisible}
           onClose={handleCloseModal}
-          mealType={selectedMeal.mealType}
+          mealType={selectedMeal.mealName}
           timeRange={selectedMeal.timeRange}
           totalCalories={selectedMeal.totalCalories}
           items={selectedMeal.items}
           isCompleted={selectedMeal.isCompleted}
-          canChange={selectedMeal.canChange}
+          canChange={true} // TODO: Get from backend
         />
       )}
     </View>

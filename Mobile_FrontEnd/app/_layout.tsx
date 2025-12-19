@@ -5,14 +5,15 @@ import "react-native-reanimated";
 
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { MealsProvider } from "@/context/MealsContext";
 
 function AuthGate() {
-  const { isLoggedIn } = useAuth();
+  const { isAuthenticated } = useAuth();
   const segments = useSegments();
 
   const inAuthGroup = segments[0] === "(auth)";
 
-  if (!isLoggedIn && !inAuthGroup) {
+  if (!isAuthenticated && !inAuthGroup) {
     return <Redirect href="/(auth)/login" />;
   }
 
@@ -28,10 +29,15 @@ export default function RootLayout() {
 
   return (
     <AuthProvider>
-      <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-        <AuthGate />
-        <StatusBar style="auto" />
-      </ThemeProvider>
+      <MealsProvider>
+        <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+          <AuthGate />
+          <StatusBar style="auto" />
+        </ThemeProvider>
+      </MealsProvider>
     </AuthProvider>
   );
 }
+
+
+MealsProvider

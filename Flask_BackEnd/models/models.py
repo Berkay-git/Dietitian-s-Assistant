@@ -77,6 +77,7 @@ class Meal(db.Model):
     MealPlanID = db.Column(db.String(36), db.ForeignKey('DailyMealPlan.MealPlanID'), primary_key=True)
     MealStart = db.Column(db.Time)
     MealEnd = db.Column(db.Time)
+    MealName = db.Column(db.String(30), nullable=False)
     
     # Relationships
     meal_items = db.relationship('MealItem', backref='meal', lazy="selectin", cascade='all, delete-orphan')
@@ -114,7 +115,7 @@ class LoginAttempts(db.Model):
     AttemptID = db.Column(db.String(36), primary_key=True)
     Email = db.Column(db.String(64))
     AttemptTime = db.Column(db.TIMESTAMP, default=datetime.utcnow)
-    IPAddress = db.Column(db.String(45))
+    IPAddress = db.Column(db.String(64))
     IsSuccess = db.Column(db.Boolean, default=False)
 
 class ClientProgressSnapshot(db.Model):

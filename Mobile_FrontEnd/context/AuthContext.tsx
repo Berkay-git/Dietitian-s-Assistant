@@ -1,64 +1,87 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+interface User {
+  user_id: string;
+  email: string;
+  name: string;
+  user_type: 'client' | 'dietitian';
+}
 
 interface AuthContextType {
-  isLoggedIn: boolean;
-  login: (email: string, password: string, userType?: 'dietitian' | 'client') => Promise<boolean>;
-  logout: () => void;
-  userEmail: string | null;
+  user: User | null;
+  isAuthenticated: boolean;
+  login: (email: string, password: string, userType: string) => Promise<boolean>;
+  logout: () => Promise<void>;
+  loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const login = async (email: string, password: string, userType?: 'dietitian' | 'client'): Promise<boolean> => {
+  const login = async (email: string, password: string, userType: string) => {
+    setLoading(true);
     try {
-      // Backend'e istek gönder
-      const response = await fetch("http://192.168.110.70:5000/api/dietitian/auth", {
-      method: "POST",
-      headers: {
-      "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ 
-        email, 
-        password,
-        user_type: userType // 'dietitian', 'client', 'None'
-      }),
-    });
+      // API call to backend
+      const response = await fetch('http://10.143.19.78:5000/api/dietitian/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, user_type: userType })
+      });
 
-    const data = await response.json();
+      const data = await response.json();
 
-      // Giriş başarılıysa durumu güncelle ve sayfaya yönlendirmeye izin ver
-      if (response.ok) { 
-        setIsLoggedIn(true);
-        setUserEmail(email);
+      // ✅ Backend'den gelen response'a göre kontrol
+      if (response.ok && data.token && data.user) {
+        const userData = {
+          user_id: data.user.id,
+          email: data.user.email,
+          name: data.user.name,
+          user_type: data.user_type
+        };
+        
+        setUser(userData);
+        setIsAuthenticated(true);
+
+        await AsyncStorage.setItem('user', JSON.stringify(userData));
+        await AsyncStorage.setItem('token', data.token);
+        
         return true;
       }
+      
+      // ✅ Login başarısız
       return false;
+      
     } catch (error) {
-      console.error("Login error:", error);
+      console.error('Login error:', error);
       return false;
+    } finally {
+      setLoading(false);
     }
   };
 
-  const logout = () => {
-    setIsLoggedIn(false);
-    setUserEmail(null);  // Kullanıcı çıkış yaptığında email bilgisini temizle (RememberMe inaktif)
+  const logout = async () => {
+    setUser(null);
+    setIsAuthenticated(false);
+    await AsyncStorage.removeItem('user');
+    await AsyncStorage.removeItem('token');
   };
 
   return (
-    <AuthContext.Provider value={{ isLoggedIn, login, logout, userEmail }}>
+    <AuthContext.Provider value={{ user, isAuthenticated, login, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );
-}
+};
 
-export function useAuth() {
+export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
-  return context;
-}
+  return context;
+};
