@@ -11,6 +11,7 @@ from models.models import Client # Import client details
 from services.dailymealplan_service import *
 from models.models import Client, PhysicalDetails, MedicalDetails
 from services.client_service import ClientService
+from services.mealitem_service import *
 
 dietitian_bp = Blueprint('dietitian', __name__)
 
@@ -265,3 +266,40 @@ def add_client():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    
+
+
+@dietitian_bp.route('/client_feedback', methods=['POST'])
+def give_Feedback(clientID,mealID,itemID,changedItem,isFollowed,isLLM = 0):
+    try:
+        if isLLM:
+            success, message, updated_item = give_feedback_on_mealitem_via_LLM(
+                clientID,mealID,itemID,changedItem,isFollowed
+            )
+        else:
+            success, message, updated_item = give_feedback_on_mealitem_manually(
+                clientID,mealID,itemID,changedItem,isFollowed
+            )
+        
+        if success:
+            return jsonify({
+                'message': message,
+                'updated_item': updated_item
+            }), 200
+        else:
+            return jsonify({'error': message}), 400
+            
+    except Exception as e:
+        print(f"Error in give_Feedback: {str(e)}")
+        return jsonify({'error': 'Server error'}), 500
+    
+
+@dietitian_bp.route('/dropdown_items', methods=['GET'])
+def get_dropdown_available_items():
+    try:
+        items_list = get_all_items()
+        return jsonify(items_list), 200
+    
+    except Exception as e:
+        print(f"Error in get_available_items: {str(e)}")
+        return jsonify({'error': 'Server error'}), 500

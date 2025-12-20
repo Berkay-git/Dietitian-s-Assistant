@@ -1,16 +1,21 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import axios from 'axios'; // npm install axios
 
-interface MealItem {
+export interface MealItem {
   name: string;
   portion: string;
   calories: number;
   protein: number;
   carb: number;
   fat: number;
+  // Burdan aşağısı kalori çembri için ekliyorum 
+  isFollowed: boolean | null;
+  changedItem: any | null;
+  canChange: boolean;
+  isLLM: boolean;
 }
 
-interface Meal {
+export interface Meal {
   mealID: string;
   mealName: string;
   timeRange: string;
@@ -22,7 +27,7 @@ interface Meal {
   items: MealItem[];
 }
 
-interface DailyMealPlan {
+export interface DailyMealPlan {
   mealPlanID: string;
   clientID: string;
   planDate: string;

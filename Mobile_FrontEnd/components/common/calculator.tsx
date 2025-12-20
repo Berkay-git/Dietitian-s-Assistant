@@ -1,45 +1,11 @@
 // components/common/calculator.tsx
-
-/* =======================
-   TYPES
-======================= */
-
-interface MealItem {
-  calories: number;
-  protein: number;
-  carb: number;
-  fat: number;
-
-  isFollowed: boolean | null;
-  changedItem: any | null;
-  canChange: boolean;
-  isLLM: boolean;
-}
-
-interface Meal {
-  totalCalories: number;
-  totalProtein: number;
-  totalCarb: number;
-  totalFat: number;
-  isCompleted: boolean;
-  items: MealItem[];
-}
-
-interface DailyTotals {
-  calories: number;
-  protein: number;
-  carb: number;
-  fat: number;
-}
+import type { DailyMealPlan } from "../../context/MealsContext";
 
 /* =======================
    HELPERS
 ======================= */
 
-/**
- * Bir item yenmiş mi?
- */
-function isItemConsumed(item: MealItem): boolean {
+function isItemConsumed(item: DailyMealPlan["meals"][0]["items"][0]): boolean {
   // 1️⃣ Diyetisyenin verdiğini aynen yemiş
   if (item.isFollowed === true) return true;
 
@@ -62,7 +28,6 @@ function isItemConsumed(item: MealItem): boolean {
     return true;
   }
 
-  // ❌ Yenmemiş / feedback yok
   return false;
 }
 
@@ -71,8 +36,8 @@ function isItemConsumed(item: MealItem): boolean {
 ======================= */
 
 export function calculateDailySummary(
-  meals: Meal[],
-  dailyTotals: DailyTotals
+  meals: DailyMealPlan["meals"],
+  dailyTotals: DailyMealPlan["dailyTotals"]
 ) {
   const consumed = {
     calories: 0,
@@ -81,17 +46,8 @@ export function calculateDailySummary(
     fat: 0,
   };
 
+  // 🚨 YEŞİL TİK YOK – HER ZAMAN ITEM ITEM
   meals.forEach(meal => {
-    // ✅ Meal tamamen tamamlandıysa → direkt ekle
-    if (meal.isCompleted) {
-      consumed.calories += meal.totalCalories;
-      consumed.protein += meal.totalProtein;
-      consumed.carb += meal.totalCarb;
-      consumed.fat += meal.totalFat;
-      return;
-    }
-
-    // ❓ Meal ? ise → item item kontrol
     meal.items.forEach(item => {
       if (isItemConsumed(item)) {
         consumed.calories += item.calories;
@@ -102,51 +58,32 @@ export function calculateDailySummary(
     });
   });
 
-  /* =======================
-     TARGETS (Backend)
-  ======================= */
-
-  const target = {
-    calories: dailyTotals.calories,
-    protein: dailyTotals.protein,
-    carb: dailyTotals.carb,
-    fat: dailyTotals.fat,
-  };
-
-  /* =======================
-     REMAINING
-  ======================= */
-
   const remaining = {
-    calories: Math.max(target.calories - consumed.calories, 0),
-    protein: Math.max(target.protein - consumed.protein, 0),
-    carb: Math.max(target.carb - consumed.carb, 0),
-    fat: Math.max(target.fat - consumed.fat, 0),
+    calories: Math.max(dailyTotals.calories - consumed.calories, 0),
+    protein: Math.max(dailyTotals.protein - consumed.protein, 0),
+    carb: Math.max(dailyTotals.carb - consumed.carb, 0),
+    fat: Math.max(dailyTotals.fat - consumed.fat, 0),
   };
-
-  /* =======================
-     RETURN SHAPE
-  ======================= */
 
   return {
     calories: {
-      target: target.calories,
+      target: dailyTotals.calories,
       consumed: consumed.calories,
       remaining: remaining.calories,
     },
     macros: {
       protein: {
-        target: target.protein,
+        target: dailyTotals.protein,
         consumed: consumed.protein,
         remaining: remaining.protein,
       },
       carb: {
-        target: target.carb,
+        target: dailyTotals.carb,
         consumed: consumed.carb,
         remaining: remaining.carb,
       },
       fat: {
-        target: target.fat,
+        target: dailyTotals.fat,
         consumed: consumed.fat,
         remaining: remaining.fat,
       },
