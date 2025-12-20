@@ -1,4 +1,4 @@
-from models.models import MealItem, Meal, DailyMealPlan
+from models.models import MealItem, Meal, DailyMealPlan, Item
 from db_config import db
 from services.item_service import get_item_by_id, calculate_item_calories, calculate_portion_calories
 
@@ -176,28 +176,124 @@ def get_meal_items_by_mealid(meal_id):
         print(f"Error in get_meal_items_by_mealid: {str(e)}")
         return None
     
-    def give_feedback_on_mealitem(client_id, meal_id, item_id, is_followed):
-        """
-        Give feedback on a meal item (isFollowed)
-            
-        Returns:
-            bool: True if update was successful, False otherwise
-        """
-        try:
-            meal_item = MealItem.query.filter_by(
-                ClientID=client_id,
-                MealID=meal_id,
-                ItemID=item_id
-            ).first()
-            
-            if not meal_item:
-                return False
-            
-            meal_item.isFollowed = is_followed
-            db.session.commit()
-            return True
-            
-        except Exception as e:
-            print(f"Error in give_feedback_on_mealitem: {str(e)}")
-            db.session.rollback()
-            return False
+    
+def give_feedback_on_mealitem_manually(client_id, meal_id, item_id, changedItem, is_followed, isLLM = 0):
+    """
+    Manually give feedback on a meal item (hand-entered feedback)
+    Updates isFollowed, changedItem, and isLLM is always be set to 0
+    
+    Returns:
+        tuple: (success: bool, message: str, updated_item: dict or None)
+    """
+    try:
+        # First verify that this meal belongs to the client
+        meal = Meal.query.filter_by(MealID=meal_id).first()
+        if not meal:
+            return False, "Meal not found", None
+        
+        # Verify the meal plan belongs to the client
+        daily_plan = DailyMealPlan.query.filter_by(
+            MealPlanID=meal.MealPlanID,
+            ClientID=client_id
+        ).first()
+        
+        if not daily_plan:
+            return False, "This meal does not belong to the specified client", None
+        
+        # Find the meal item
+        meal_item = MealItem.query.filter_by(
+            MealID=meal_id,
+            ItemID=item_id
+        ).first()
+        
+        if not meal_item:
+            return False, "Meal item not found", None
+        
+        # It will not be overwritten of an itemID so we can track what changed with what.
+        # UI should be designed to show the previous and new item if changedItem is not null.
+        # Update the meal item with manual feedback
+        meal_item.isFollowed = is_followed
+        meal_item.ChangedItem = changedItem if changedItem else None
+        meal_item.isLLM = isLLM 
+        
+        # Commit changes to database
+        db.session.commit()
+        
+        # Get item details for response
+        item = get_item_by_id(item_id)
+        if not item:
+            return False, "Item details not found", None
+        
+        # Calculate values for response
+        total_calories_per_100g = calculate_item_calories(
+            item['ItemProtein'],
+            item['ItemCarb'],
+            item['ItemFat']
+        )
+        
+        portion_calories = calculate_portion_calories(
+            total_calories_per_100g,
+            meal_item.ConsumeAmount
+        )
+        
+        updated_item_data = {
+            'MealID': meal_item.MealID,
+            'ItemID': meal_item.ItemID,
+            'name': item['ItemName'],
+            'portion': f"{item['ItemName']}, {meal_item.ConsumeAmount} grams",
+            'calories': round(portion_calories, 0),
+            'consumeAmount': meal_item.ConsumeAmount,
+            'canChange': meal_item.canChange,
+            'isFollowed': meal_item.isFollowed,
+            'isCompleted': True,  # Now it's completed since we gave feedback
+            'changedItem': meal_item.ChangedItem,
+            'isLLM': meal_item.isLLM,
+            'protein': round(item['ItemProtein'] * (meal_item.ConsumeAmount / 100), 1),
+            'carb': round(item['ItemCarb'] * (meal_item.ConsumeAmount / 100), 1),
+            'fat': round(item['ItemFat'] * (meal_item.ConsumeAmount / 100), 1)
+        }
+        
+        return True, "Feedback successfully saved", updated_item_data
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error in give_feedback_on_mealitem_manually: {str(e)}")
+        return False, f"Server error: {str(e)}", None
+    
+
+
+
+def give_feedback_on_mealitem_via_LLM(client_id, meal_id, item_id, changedItem, is_followed):
+    return 0, "Not implemented", None
+
+def get_all_items():
+    """
+    Get all available items from the database.
+    
+    Returns:
+        list: List of items with their details
+    """
+    try:
+        items = Item.query.all()
+        items_list = []
+        
+        for item in items:
+            total_calories_per_100g = calculate_item_calories(
+                item['ItemProtein'],
+                item['ItemCarb'],
+                item['ItemFat']
+            )
+            items_list.append({
+                'ItemID': item.ItemID,
+                'ItemName': item.ItemName,
+                'ItemCalories': round(total_calories_per_100g, 0),
+                'ItemProtein': item.ItemProtein,
+                'ItemCarb': item.ItemCarb,
+                'ItemFat': item.ItemFat,
+            })
+        
+        return items_list
+        
+    except Exception as e:
+        print(f"Error in get_all_items: {str(e)}")
+        return []
