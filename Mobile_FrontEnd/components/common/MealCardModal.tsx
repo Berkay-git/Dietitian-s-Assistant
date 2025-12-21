@@ -4,7 +4,6 @@ import { mealCardModalStyles as styles } from '../../styles/screens/MealCardModa
 import FeedbackModal from './FeedbackModal';
 import {useItems} from "@/context/ItemContext";
 import { MealItem } from '@/context/MealsContext';
-import { advanceAnimationByFrame } from 'react-native-reanimated';
 
 interface MealDetailModalProps {
   visible: boolean;
@@ -64,18 +63,18 @@ export default function MealDetailModal({
   const {items : availableItems, loading} = useItems();
 
   const mockLLMAlternative = {
-  name: "Cottage Cheese",
-  portion: "180g",
-  calories: 120,
-  protein: 18,
-  carb: 6,
-  fat: 3,
+    name: "Cottage Cheese",
+    portion: "180g",
+    calories: 120,
+    protein: 18,
+    carb: 6,
+    fat: 3,
   };
 
   const getFeedbackStatus = (
     isFollowed: boolean | null | undefined, 
     isLLM: boolean | null | undefined, 
-    changedItem: MealItem['changedItem']
+    changedItem: string | null
   ) => {
     if (isFollowed === null || isFollowed === undefined) {
       return { text: '⏳ Pending', color: '#FF9800' };
@@ -103,12 +102,12 @@ export default function MealDetailModal({
   const handleGetAlternative = (item: MealItem) => {
     const currentTry = aiTryCount[item.itemID!] || 0;
     if (currentTry >= 3) {
-    Alert.alert(
-      "Limit reached",
-      "You can request AI alternative maximum 3 times."
-    );
-    return;
-  }
+      Alert.alert(
+        "Limit reached",
+        "You can request AI alternative maximum 3 times."
+      );
+      return;
+    }
     if (expandedItemID === item.itemID) {
       // kapat
       setExpandedItemID(null);
@@ -120,8 +119,6 @@ export default function MealDetailModal({
       ...prev,
       [item.itemID!]: currentTry + 1,
     }));
-
-
 
     setExpandedItemID(item.itemID!);
     setLlmLoading(true);
@@ -183,8 +180,6 @@ export default function MealDetailModal({
     }, 1200);
   };
 
-
-
   const handleItemFeedbackPress = (item: MealItem) => {
     if (item.isFollowed !== null && item.isFollowed !== undefined) {
       Alert.alert('Info', 'Feedback has already been given for this item');
@@ -194,61 +189,61 @@ export default function MealDetailModal({
     setFeedbackModalVisible(true);
   };
 
-const handleSubmitFeedback = async (feedback: {
-  itemID: string;
-  isFollowed: boolean;
-  changedItems?: Array<{
-    itemName: string;
-    portion: number;
-  }> | null;
-}) => {
-  try {
-    // Format changed_item as a string (can contain multiple items)
-    let changed_item_string = null;
-    
-    if (feedback.changedItems && feedback.changedItems.length > 0) {
-      // Join multiple items into a single string
-      changed_item_string = feedback.changedItems
-        .map(item => `${item.itemName} - ${item.portion}g`)
-        .join(', ');
-    }
-    
-    const feedbackData = {
-      client_id: selectedFeedbackItem?.clientID,
-      meal_id: selectedFeedbackItem?.mealID,
-      item_id: feedback.itemID,
-      is_followed: feedback.isFollowed,
-      changed_item: changed_item_string // Send as string or null [Json format]
-    };
-    
-    console.log('Sending feedback to backend:', feedbackData);
-
-    const response = await fetch('http://10.0.2.2:5000/api/dietitian/client_feedback', {
-      method: 'PATCH',
-      headers: { 
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(feedbackData)
-    });
-
-    const result = await response.json();
-    
-    if (response.ok) {
-      console.log('Feedback saved successfully:', result);
-      Alert.alert('Success', 'Feedback saved successfully!');
+  const handleSubmitFeedback = async (feedback: {
+    itemID: string;
+    isFollowed: boolean;
+    changedItems?: Array<{
+      itemName: string;
+      portion: number;
+    }> | null;
+  }) => {
+    try {
+      // ✅ Format changed_item as: "Name - portionG, Name2 - portionG" (Database format)
+      let changed_item_string = null;
       
-      setFeedbackModalVisible(false);
-      setSelectedFeedbackItem(null);
-    } else {
-      console.error('Error response:', result);
-      Alert.alert('Error', result.error || 'Failed to save feedback');
+      if (feedback.changedItems && feedback.changedItems.length > 0) {
+        // Join with ", " for database storage
+        changed_item_string = feedback.changedItems
+          .map(item => `${item.itemName} - ${item.portion}g`)
+          .join(', ');
+      }
+      
+      const feedbackData = {
+        client_id: selectedFeedbackItem?.clientID,
+        meal_id: selectedFeedbackItem?.mealID,
+        item_id: feedback.itemID,
+        is_followed: feedback.isFollowed,
+        changed_item: changed_item_string  // "Greek Yogurt - 150g, Honey - 20g"
+      };
+      
+      console.log('Sending feedback to backend:', feedbackData);
+
+      const response = await fetch('http://10.0.2.2:5000/api/dietitian/client_feedback', {
+        method: 'PATCH',
+        headers: { 
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(feedbackData)
+      });
+
+      const result = await response.json();
+      
+      if (response.ok) {
+        console.log('Feedback saved successfully:', result);
+        Alert.alert('Success', 'Feedback saved successfully!');
+        
+        setFeedbackModalVisible(false);
+        setSelectedFeedbackItem(null);
+      } else {
+        console.error('Error response:', result);
+        Alert.alert('Error', result.error || 'Failed to save feedback');
+      }
+      
+    } catch (error) {
+      console.error('Error submitting feedback:', error);
+      Alert.alert('Error', 'Failed to connect to server');
     }
-    
-  } catch (error) {
-    console.error('Error submitting feedback:', error);
-    Alert.alert('Error', 'Failed to connect to server');
-  }
-};
+  };
 
   return (
     <Modal
@@ -309,80 +304,176 @@ const handleSubmitFeedback = async (feedback: {
             {/* Meal Items Detail */}
             <Text style={styles.sectionTitle}>Food Details ({items.length} items)</Text>
             {items.map((item, index) => {
-
               const feedbackStatus = getFeedbackStatus(item.isFollowed, item.isLLM, item.changedItem);
-               // Eğer AI kabul edildiyse bu item’ın yerine render edeceğiz
+              
+              // ✅ Parse changedItem string: "name,portion,calories,protein,carb,fat;name2,..."
+              const changedItems: Array<{
+                name: string;
+                portion: string;
+                calories: number;
+                protein: number;
+                carb: number;
+                fat: number;
+              }> = [];
+              
+              if (item.changedItem) {
+                // Split by semicolon for multiple items
+                const itemsArray = item.changedItem.split(';');
+                itemsArray.forEach((itemStr: string) => {
+                  const parts = itemStr.split(',');
+                  if (parts.length === 6) {
+                    changedItems.push({
+                      name: parts[0].trim(),
+                      portion: `${parts[1].trim()}g`,
+                      calories: parseFloat(parts[2]),
+                      protein: parseFloat(parts[3]),
+                      carb: parseFloat(parts[4]),
+                      fat: parseFloat(parts[5])
+                    });
+                  }
+                });
+              }
+              
+              const hasChangedItem = changedItems.length > 0;
+
+              // Eğer AI kabul edildiyse bu item'ın yerine render edeceğiz
               const acceptedAI = acceptedAIItems[item.itemID!];
               const displayedItem = acceptedAI
-              ? {
-                  ...item,
-                  name: acceptedAI.aiItem.name,
-                  portion: acceptedAI.aiItem.portion,
-                  calories: acceptedAI.aiItem.calories,
-                  protein: acceptedAI.aiItem.protein,
-                  carb: acceptedAI.aiItem.carb,
-                  fat: acceptedAI.aiItem.fat,
-                }
-              : item;
-              const displayedName = acceptedAI ? acceptedAI.aiItem.name : item.name;
-              const displayedCalories = acceptedAI ? acceptedAI.aiItem.calories : item.calories;
-              const displayedProtein = acceptedAI ? acceptedAI.aiItem.protein : item.protein;
-              const displayedCarb = acceptedAI ? acceptedAI.aiItem.carb : item.carb;
-              const displayedFat = acceptedAI ? acceptedAI.aiItem.fat : item.fat;
-              const displayedPortion = acceptedAI ? acceptedAI.aiItem.portion : item.portion;
+                ? {
+                    ...item,
+                    name: acceptedAI.aiItem.name,
+                    portion: acceptedAI.aiItem.portion,
+                    calories: acceptedAI.aiItem.calories,
+                    protein: acceptedAI.aiItem.protein,
+                    carb: acceptedAI.aiItem.carb,
+                    fat: acceptedAI.aiItem.fat,
+                  }
+                : item;
               
               return (
                 <View key={index} style={styles.itemCard}>
-                  <View style={styles.itemHeader}>
-                    <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' }}>
-                      {/*  İsim render: Accept varsa eskiyi çiz + yanına yeni */}
-                      {acceptedAI ? (
-                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                          <Text
-                            style={[
-                              styles.itemName,
-                              { color: '#E53935', marginRight: 6 } // 🔴 eski ürün
-                            ]}
-                          >
-                            {acceptedAI.originalName}
-                          </Text>
-
-                          <Text
-                            style={[
-                              styles.itemName,
-                              { color: '#2E7D32' } // 🟢 yeni ürün
-                            ]}
-                          >
-                            {displayedItem.name}
+                  {/* ✅ Eski item (üstü çizili) - sadece changedItem varsa göster */}
+                  {hasChangedItem && (
+                    <View style={{ opacity: 0.5, marginBottom: 8 }}>
+                      <View style={styles.itemHeader}>
+                        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
+                          <Text style={[styles.itemName, { textDecorationLine: 'line-through' }]}>
+                            {item.name}
                           </Text>
                         </View>
-                      ) : (
-                        <Text style={styles.itemName}>{item.name}</Text>
-                      )}
-                      {/* Alternative badge */}
-                      {item.canChange && (
-                        <View style={styles.changeableBadge}>
-                          <Text style={styles.changeableBadgeText}>🔄</Text>
-                        </View>
-                      )}
+                        <Text style={[styles.itemCalories, { textDecorationLine: 'line-through' }]}>
+                          {item.calories} kcal
+                        </Text>
+                      </View>
+                      
+                      <Text style={[styles.itemPortion, { textDecorationLine: 'line-through' }]}>
+                        {item.portion}
+                      </Text>
+                      
+                      <View style={styles.macroRow}>
+                        <Text style={[styles.macroText, { textDecorationLine: 'line-through' }]}>
+                          P: {item.protein}g
+                        </Text>
+                        <Text style={[styles.macroText, { textDecorationLine: 'line-through' }]}>
+                          C: {item.carb}g
+                        </Text>
+                        <Text style={[styles.macroText, { textDecorationLine: 'line-through' }]}>
+                          F: {item.fat}g
+                        </Text>
+                      </View>
                     </View>
-                    <Text style={styles.itemCalories}>{displayedItem.calories} kcal</Text>
-                  </View>
-                  
-                  <Text style={styles.itemPortion}>{item.portion}</Text>
+                  )}
+
+                  {/* ✅ Yeni item(lar) - changedItem varsa bunları göster */}
+                  {hasChangedItem ? (
+                    changedItems.map((changedItem, idx) => (
+                      <View key={`changed-${idx}`} style={{ marginBottom: idx < changedItems.length - 1 ? 8 : 0 }}>
+                        <View style={styles.itemHeader}>
+                          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' }}>
+                            <Text style={[styles.itemName, { color: '#4CAF50', fontWeight: 'bold' }]}>
+                              ✓ {changedItem.name}
+                            </Text>
+                            {item.canChange && (
+                              <View style={styles.changeableBadge}>
+                                <Text style={styles.changeableBadgeText}>🔄</Text>
+                              </View>
+                            )}
+                          </View>
+                          <Text style={[styles.itemCalories, { color: '#4CAF50' }]}>
+                            {changedItem.calories} kcal
+                          </Text>
+                        </View>
+                        
+                        <Text style={[styles.itemPortion, { color: '#4CAF50' }]}>
+                          {changedItem.portion}
+                        </Text>
+                        
+                        <View style={styles.macroRow}>
+                          <Text style={[styles.macroText, { color: '#4CAF50' }]}>
+                            P: {changedItem.protein}g
+                          </Text>
+                          <Text style={[styles.macroText, { color: '#4CAF50' }]}>
+                            C: {changedItem.carb}g
+                          </Text>
+                          <Text style={[styles.macroText, { color: '#4CAF50' }]}>
+                            F: {changedItem.fat}g
+                          </Text>
+                        </View>
+                      </View>
+                    ))
+                  ) : (
+                    // ✅ Değişiklik yoksa normal göster (veya AI accepted item)
+                    <>
+                      <View style={styles.itemHeader}>
+                        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' }}>
+                          {acceptedAI ? (
+                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                              <Text
+                                style={[
+                                  styles.itemName,
+                                  { color: '#E53935', marginRight: 6 } // 🔴 eski ürün
+                                ]}
+                              >
+                                {acceptedAI.originalName}
+                              </Text>
+
+                              <Text
+                                style={[
+                                  styles.itemName,
+                                  { color: '#2E7D32' } // 🟢 yeni ürün
+                                ]}
+                              >
+                                {displayedItem.name}
+                              </Text>
+                            </View>
+                          ) : (
+                            <Text style={styles.itemName}>{item.name}</Text>
+                          )}
+                          
+                          {item.canChange && (
+                            <View style={styles.changeableBadge}>
+                              <Text style={styles.changeableBadgeText}>🔄</Text>
+                            </View>
+                          )}
+                        </View>
+                        <Text style={styles.itemCalories}>{displayedItem.calories} kcal</Text>
+                      </View>
+                      
+                      <Text style={styles.itemPortion}>{displayedItem.portion}</Text>
+                      
+                      <View style={styles.macroRow}>
+                        <Text style={styles.macroText}>P: {displayedItem.protein}g</Text>
+                        <Text style={styles.macroText}>C: {displayedItem.carb}g</Text>
+                        <Text style={styles.macroText}>F: {displayedItem.fat}g</Text>
+                      </View>
+                    </>
+                  )}
                   
                   {/* Feedback status badge */}
                   <View style={[styles.feedbackBadge, { backgroundColor: feedbackStatus.color + '20' }]}>
                     <Text style={[styles.feedbackBadgeText, { color: feedbackStatus.color }]}>
                       {feedbackStatus.text}
                     </Text>
-                  </View>
-                  
-                  {/* Macro indicators */}
-                  <View style={styles.macroRow}>
-                    <Text style={styles.macroText}>P: {displayedItem.protein}g</Text>
-                    <Text style={styles.macroText}>C: {displayedItem.carb}g</Text>
-                    <Text style={styles.macroText}>F: {displayedItem.fat}g</Text>
                   </View>
 
                   {/* Individual Item Action Buttons - Feedback verilmemişse göster */}
@@ -405,7 +496,8 @@ const handleSubmitFeedback = async (feedback: {
                       )}
                     </View>
                   )}
-                  {/* 🔽 LLM ALTERNATIVE — SADECE BURAYA EKLENDİ */}
+
+                  {/* 🔽 LLM ALTERNATIVE */}
                   {expandedItemID === item.itemID && (
                     <View style={styles.llmContainer}>
                       {llmLoading ? (
@@ -433,7 +525,6 @@ const handleSubmitFeedback = async (feedback: {
                             <Text>F: {llmResult.fat}g</Text>
                           </View>
 
-                          {/* ✅ ACCEPT / CANCEL */}
                           <View style={{ flexDirection: "row", marginTop: 12, justifyContent: 'space-between', gap: 10 }}>
                             <TouchableOpacity
                               style={[
@@ -527,4 +618,3 @@ const handleSubmitFeedback = async (feedback: {
     </Modal>
   );
 }
-

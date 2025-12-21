@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime
 from models.models import DailyMealPlan, Meal, MealItem, Item
 from db_config import db
+from services.item_service import calculate_portion_calories, calculate_item_calories
 
 # --- Function 1: Create Logic ---
 def create_meal_plan(data):
@@ -175,18 +176,76 @@ def get_meals_by_clientid_and_date(client_id, plan_date):
             total_fat = 0
             
             for mi, item in meal_items:
-                # Calculate Calories: (4*Pro + 4*Carb + 9*Fat) * ratio
-                base_cals = (4 * (item.ItemProtein or 0)) + \
-                            (4 * (item.ItemCarb or 0)) + \
-                            (9 * (item.ItemFat or 0))
+                # Use helper function for ORIGINAL item
+
+                actual_100g_cals = calculate_item_calories(
+                    item.ItemProtein or 0,
+                    item.ItemCarb or 0,
+                    item.ItemFat or 0,
+                )
+                
+                actual_cals = calculate_portion_calories(
+                    actual_100g_cals,
+                    mi.ConsumeAmount
+                )
                 
                 ratio = mi.ConsumeAmount / 100.0
-                actual_cals = base_cals * ratio
-                
                 scaled_protein = (item.ItemProtein or 0) * ratio
                 scaled_carb = (item.ItemCarb or 0) * ratio
                 scaled_fat = (item.ItemFat or 0) * ratio
                 
+                # Parse changedItem from database format: "Name - portion, Name2 - portion2"
+                # Convert to: "name,portion,calories,protein,carb,fat;name2,portion2,calories2,protein2,carb2,fat2"
+                changed_item_parsed = None
+                if mi.ChangedItem:
+                    # Database format: "Greek Yogurt - 150g, Honey - 20g"
+                    items_list = mi.ChangedItem.split(', ')  # ", " ile ayır (database formatı/ Name - Portion, ...)
+                    parsed_items = []
+                    
+                    for item_str in items_list:
+                        # Split "Greek Yogurt - 150g" into name and portion
+                        parts = item_str.split(' - ')
+                        if len(parts) == 2:
+                            changed_name = parts[0].strip()
+                            changed_portion_str = parts[1].strip().replace('g', '')
+                            
+                            try:
+                                changed_portion = int(changed_portion_str)
+                            except ValueError:
+                                continue
+                            
+                            # Find item in database by name
+                            changed_item_obj = Item.query.filter_by(ItemName=changed_name).first()
+                            if changed_item_obj:
+                                # Calculate macros for changed item
+                                changed_100g_cals = calculate_item_calories(
+                                    changed_item_obj.ItemProtein or 0,
+                                    changed_item_obj.ItemCarb or 0,
+                                    changed_item_obj.ItemFat or 0,
+                                )
+                                changed_cals = calculate_portion_calories(
+                                    changed_100g_cals,
+                                    changed_portion
+                                )
+                                
+                                changed_ratio = changed_portion / 100.0
+                                changed_protein = (changed_item_obj.ItemProtein or 0) * changed_ratio
+                                changed_carb = (changed_item_obj.ItemCarb or 0) * changed_ratio
+                                changed_fat = (changed_item_obj.ItemFat or 0) * changed_ratio
+                                
+                                # Format: "name,portion,calories,protein,carb,fat"
+                                parsed_items.append(
+                                    f"{changed_name},{changed_portion},{round(changed_cals)},"
+                                    f"{round(changed_protein, 1)},{round(changed_carb, 1)},{round(changed_fat, 1)}"
+                                )
+                    
+                    # Join with semicolon for multiple items
+                    # Example result: "Greek Yogurt,150,120,18.0,6.0,3.0;Honey,20,60,0.0,16.0,0.0"
+                    if parsed_items:
+                        changed_item_parsed = ';'.join(parsed_items)
+                
+                # ORIGINAL item ALWAYS contributes to totals
+                # Changed items are SEPARATE in the "changedItem" and shown in UI only
                 total_calories += actual_cals
                 total_protein += scaled_protein
                 total_carb += scaled_carb
@@ -203,12 +262,12 @@ def get_meals_by_clientid_and_date(client_id, plan_date):
                     'carb': round(scaled_carb, 1),
                     'fat': round(scaled_fat, 1),
                     'isFollowed': mi.isFollowed,
-                    'changedItem': mi.ChangedItem,
+                    'changedItem': changed_item_parsed,  #  Parsed string or None
                     'canChange': mi.canChange,
                     'isLLM': mi.isLLM
                 })
             
-            # Check if meal is completed (all items have isFollowed != None)
+            # Check if meal is completed
             is_completed = all(mi.isFollowed is not None for mi, _ in meal_items) if meal_items else False
             
             meals_data.append({
