@@ -2,6 +2,7 @@ import { Modal, View, Text, TouchableOpacity, ScrollView, Alert } from 'react-na
 import { useState } from 'react';
 import { mealCardModalStyles as styles } from '../../styles/screens/MealCardModalStyles';
 import FeedbackModal from './FeedbackModal';
+import {useItems} from "@/context/ItemContext";
 
 interface MealItem {
   name: string;
@@ -56,15 +57,8 @@ export default function MealDetailModal({
   const allItemsChangeable = items.length > 0 && changeableItems.length === items.length;
   const someItemsChangeable = changeableItems.length > 0 && changeableItems.length < items.length;
   const noItemsChangeable = changeableItems.length === 0;
-
-  // Mock data - Backend'den gelecek
-  const availableItems = [
-    { itemID: '1', itemName: 'Grilled Chicken' },
-    { itemID: '2', itemName: 'Brown Rice' },
-    { itemID: '3', itemName: 'Steamed Broccoli' },
-    { itemID: '4', itemName: 'Greek Yogurt' },
-    { itemID: '5', itemName: 'Mixed Nuts' },
-  ];
+  const {items : availableItems, loading} = useItems();
+  console.log("AVAILABLE ITEMS:", availableItems);
 
   const getFeedbackStatus = (
     isFollowed: boolean | null | undefined, 

@@ -6,6 +6,7 @@ import "react-native-reanimated";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { MealsProvider } from "@/context/MealsContext";
+import { ItemProvider } from "@/context/ItemContext";
 
 function AuthGate() {
   const { isAuthenticated } = useAuth();
@@ -30,10 +31,12 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <MealsProvider>
-        <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-          <AuthGate />
-          <StatusBar style="auto" />
-        </ThemeProvider>
+        <ItemProvider>
+          <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+            <AuthGate />
+            <StatusBar style="auto" />
+          </ThemeProvider>
+        </ItemProvider>
       </MealsProvider>
     </AuthProvider>
   );

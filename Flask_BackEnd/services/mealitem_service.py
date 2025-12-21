@@ -263,36 +263,35 @@ def give_feedback_on_mealitem_manually(client_id, meal_id, item_id, changedItem,
 
 
 
-def give_feedback_on_mealitem_via_LLM(client_id, meal_id, item_id, changedItem, is_followed):
-    return 0, "Not implemented", None
-
 def get_all_items():
-    """
-    Get all available items from the database.
-    
-    Returns:
-        list: List of items with their details
-    """
     try:
         items = Item.query.all()
+
+
         items_list = []
-        
+
         for item in items:
             total_calories_per_100g = calculate_item_calories(
-                item['ItemProtein'],
-                item['ItemCarb'],
-                item['ItemFat']
+                item.ItemProtein,
+                item.ItemCarb,
+                item.ItemFat
             )
+
             items_list.append({
-                'ItemID': item.ItemID,
-                'ItemName': item.ItemName,
-                'ItemCalories': round(total_calories_per_100g, 0),
-                'ItemProtein': item.ItemProtein,
-                'ItemCarb': item.ItemCarb,
-                'ItemFat': item.ItemFat,
+                "ItemID": item.ItemID,
+                "ItemName": item.ItemName,
+                "ItemCalories": round(total_calories_per_100g, 0),
+                "ItemProtein": item.ItemProtein,
+                "ItemCarb": item.ItemCarb,
+                "ItemFat": item.ItemFat,
             })
-        
+
         return items_list
+
+    except Exception as e:
+        print(f"Error in get_all_items: {str(e)}")
+        raise
+
         
     except Exception as e:
         print(f"Error in get_all_items: {str(e)}")
