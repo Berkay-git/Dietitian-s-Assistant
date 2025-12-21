@@ -34,7 +34,7 @@ def create_client(dietitian_id, data):
             IsActive=True
         )
 
-        # 5. Save to DB
+        #Save to DB
         db.session.add(new_client)
 
         # 6. Create Physical Details Record (Step 2 Data)
@@ -102,3 +102,39 @@ def update_client_details(client_id, data):
         db.session.rollback()
         print(f"Update Error: {e}")
         return False, "Database update failed"
+    
+
+def delete_client(client_id):
+    try:
+        clean_id = client_id.strip()
+        
+        client = Client.query.filter_by(ClientID=clean_id).first()
+        if not client:
+            return False, "Client not found"
+        
+        client.IsActive = False # deactivate client.
+        db.session.commit()
+        
+        return True, "Client deactivated successfully"
+
+    except Exception as e:
+        db.session.rollback()
+        return False, str(e)
+    
+def reactivate_client(client_id):
+    try:
+        clean_id = client_id.strip()
+        
+        client = Client.query.filter_by(ClientID=clean_id).first()
+        if not client:
+            return False, "Client not found"
+        
+        # Set back to True
+        client.IsActive = True
+        db.session.commit()
+        
+        return True, "Client reactivated successfully"
+
+    except Exception as e:
+        db.session.rollback()
+        return False, str(e)

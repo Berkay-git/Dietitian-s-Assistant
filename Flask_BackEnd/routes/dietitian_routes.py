@@ -14,6 +14,8 @@ from models.models import Client, PhysicalDetails, MedicalDetails
 from services.client_service import *
 from services.mealitem_service import *
 from services.meal_service import *
+import services.client_service as client_service# web için, böyle importlamak lazim yoksa çalışmıyor.
+import services.meal_service as meal_service# web için, böyle importlamayınca çalışmıyor. (from ... import *) olmuyor.
 
 
 
@@ -195,7 +197,7 @@ def get_my_clients():
             return jsonify({'error': 'Dietitian ID is required'}), 400
 
         # 2. Query the database: "Select * FROM Client WHERE AssignedDietitianID = ..."
-        clients = Client.query.filter_by(AssignedDietitianID=dietitian_id, IsActive=True).all()
+        clients = Client.query.filter_by(AssignedDietitianID=dietitian_id).all()
         
         # 3. Convert to JSON (using the .to_dict() method we created)
         client_list = [client.to_dict() for client in clients]
@@ -461,3 +463,28 @@ def update_mealitem_alternative():
         print(f"Error in update_mealitem_alternative route: {str(e)}")
         traceback.print_exc()
         return jsonify({'error': 'Server error'}), 500
+    
+@dietitian_bp.route('/clients/<client_id>', methods=['DELETE'])
+def delete_client(client_id):
+    try:
+        # Clean call to the service
+        success, message = client_service.delete_client(client_id)
+        
+        if success:
+            return jsonify({'message': message}), 200
+        else:
+            return jsonify({'error': message}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    
+@dietitian_bp.route('/clients/<client_id>/reactivate', methods=['PUT'])
+def reactivate_client(client_id):
+    try:
+        success, message = client_service.reactivate_client(client_id)
+        
+        if success:
+            return jsonify({'message': message}), 200
+        else:
+            return jsonify({'error': message}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500

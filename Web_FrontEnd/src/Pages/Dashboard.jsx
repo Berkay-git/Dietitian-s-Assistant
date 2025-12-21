@@ -22,7 +22,7 @@ export default function Dashboard() {
       }
 
       try {
-        const response = await fetch(`http://localhost:5000/api/dietitian/clients?dietitian_id=${dietitianId}`);
+        const response = await fetch(`http://localhost:5000/api/dietitian/clients?dietitian_id=${dietitianId}&_t=${Date.now()}`);
         const data = await response.json();
 
         if (response.ok) {
@@ -59,6 +59,15 @@ export default function Dashboard() {
   if (loading) return <div style={styles.centerMsg}>Loading your clients...</div>;
   if (error) return <div style={styles.centerMsg}>Error: {error}</div>;
 
+  // --- SORTING LOGIC: Active first, Inactive last(at the bottom) ---
+  const sortedClients = [...clients].sort((a, b) => {
+      if (a.status === 'Inactive' && b.status !== 'Inactive') return 1;
+      if (a.status !== 'Inactive' && b.status === 'Inactive') return -1;
+      return 0; // Keep original order otherwise
+  });
+
+  console.log("DASHBOARD RENDER DATA:", sortedClients);
+
   return (
     <div style={styles.mainContainer}>
       <div style={styles.contentContainer}>
@@ -68,7 +77,6 @@ export default function Dashboard() {
           <h1 style={styles.title}>My Clients</h1>
           <div style={styles.headerButtons}>
                <button style={styles.logoutButton} onClick={handleLogout}>Logout</button>
-               {/* Note: This button needs to create a user in DB, we'll do that next */}
                <button style={styles.addButton} onClick={() => navigate('/add-client')}>
                  + Insert Client
                </button>
@@ -77,34 +85,45 @@ export default function Dashboard() {
 
         {/* Client List */}
         <div style={styles.list}>
-          {clients.length === 0 ? (
+          {sortedClients.length === 0 ? (
             <div style={{textAlign:'center', color:'#999', marginTop:'20px'}}>
               No clients found. Click "+ Insert Client" to add one!
             </div>
           ) : (
-            clients.map((client) => (
-              <div 
-                key={client.id} 
-                style={styles.card} 
-                onClick={() => handleClientClick(client)}
-              >
-                <div>
-                  <h3 style={styles.clientName}>{client.name}</h3>
-                  {/* GRUP ILE KONUŞUP NE GÖSTERMESİ GEREKTİĞİNİ KARAKLAŞTIR KARAR1 */}
-                  <p style={styles.clientDate}>DOB: {client.dob || 'N/A'}</p>
+            sortedClients.map((client) => {
+              const isInactive = client.status === 'Inactive';
+              
+              return (
+                <div 
+                  key={client.id} 
+                  style={{
+                      ...styles.card,
+                      // CONDITIONAL STYLING FOR INACTIVE. Inactive is kind of grey and transparent.
+                      backgroundColor: isInactive ? '#f5f5f5' : 'white',
+                      opacity: isInactive ? 0.7 : 1,
+                      border: isInactive ? '1px solid #ddd' : 'none'
+                  }} 
+                  onClick={() => handleClientClick(client)}
+                >
+                  <div>
+                    <h3 style={{...styles.clientName, color: isInactive ? '#666' : '#333'}}>
+                        {client.name}
+                    </h3>
+                    <p style={styles.clientDate}>DOB: {client.dob || 'N/A'}</p>
+                  </div>
+                  
+                  <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
+                    <span style={{
+                      ...styles.statusBadge,
+                      backgroundColor: isInactive ? '#e0e0e0' : (client.status === 'Active' ? '#e3f2fd' : '#fff3e0'),
+                      color: isInactive ? '#666' : (client.status === 'Active' ? '#007AFF' : '#FF9800')
+                    }}>
+                      {client.status || 'Active'}
+                    </span>
+                  </div>
                 </div>
-                
-                <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
-                  <span style={{
-                    ...styles.statusBadge,
-                    backgroundColor: client.status === 'Active' ? '#e3f2fd' : '#fff3e0',
-                    color: client.status === 'Active' ? '#007AFF' : '#FF9800'
-                  }}>
-                    {client.status || 'Active'}
-                  </span>
-                </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
 
