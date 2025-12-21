@@ -3,29 +3,13 @@ import { useState } from 'react';
 import { mealCardModalStyles as styles } from '../../styles/screens/MealCardModalStyles';
 import FeedbackModal from './FeedbackModal';
 import {useItems} from "@/context/ItemContext";
-
-interface MealItem {
-  name: string;
-  portion: string;
-  calories: number;
-  protein: number;
-  carb: number;
-  fat: number;
-  canChange?: boolean;
-  isFollowed?: boolean | null;
-  isLLM?: boolean | null;
-  changedItem?: {
-    itemID: string;
-    itemName: string;
-    portion: number;
-  } | null;
-  itemID?: string;
-}
+import { MealItem } from '@/context/MealsContext';
 
 interface MealDetailModalProps {
   visible: boolean;
   onClose: () => void;
   mealName: string;
+  mealID: string;
   timeRange: string;
   totalCalories: number;
   totalProtein: number;
@@ -40,6 +24,7 @@ export default function MealDetailModal({
   visible,
   onClose,
   mealName,
+  mealID,
   timeRange,
   totalCalories,
   totalProtein,
@@ -96,38 +81,46 @@ export default function MealDetailModal({
     setFeedbackModalVisible(true);
   };
 
-  const handleSubmitFeedback = (feedback: {
+  const handleSubmitFeedback = async (feedback: {
     itemID: string;
     isFollowed: boolean;
     changedItems?: Array<{
-      itemID: string;
       itemName: string;
       portion: number;
     }> | null;
-    isLLM: boolean;
   }) => {
-    console.log('Feedback submitted:', feedback);
-    // TODO: Call backend API
-    Alert.alert('Success', 'Feedback saved successfully!');
-    
-    setFeedbackModalVisible(false);
-    setSelectedFeedbackItem(null);
-  };
+    try {
+    const feedbackData = {
+      client_id: selectedFeedbackItem?.clientID,
+      meal_id: selectedFeedbackItem?.mealID,
+      item_id: feedback.itemID,
+      is_followed: feedback.isFollowed,
+      changed_item: feedback.changedItems && feedback.changedItems.length > 0 
+        ? {
+            itemName: feedback.changedItems[0].itemName,
+            portion: feedback.changedItems[0].portion
+          }
+        : null
+    };
+      
+      console.log('Sending feedback to backend:', feedbackData);
 
-  // FeedbackModal render
-  {selectedFeedbackItem && (
-    <FeedbackModal
-      visible={feedbackModalVisible}
-      onClose={() => {
-        setFeedbackModalVisible(false);
-        setSelectedFeedbackItem(null);
-      }}
-      item={selectedFeedbackItem}
-      mealName={mealName}
-      availableItems={availableItems}
-      onSubmitFeedback={handleSubmitFeedback}
-    />
-  )}
+      // TODO: Call backend API
+      // const response = await fetch('http://10.0.2.2:5000/api/dietitian/client_feedback', {
+      //   method: 'PATCH',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify(feedbackData)
+      // });
+
+      Alert.alert('Success', 'Feedback saved successfully!');
+      
+      setFeedbackModalVisible(false);
+      setSelectedFeedbackItem(null);
+    } catch (error) {
+      console.error('Error submitting feedback:', error);
+      Alert.alert('Error', 'Failed to save feedback');
+    }
+  };
 
   return (
     <Modal
@@ -286,8 +279,6 @@ export default function MealDetailModal({
                 </Text>
               </View>
             )}
-
-            {/* ❌ ALT BUTONLAR KALDIRILDI */}
 
           </ScrollView>
         </View>

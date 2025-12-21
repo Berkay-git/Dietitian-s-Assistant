@@ -2,6 +2,9 @@ import React, { createContext, useContext, useState, ReactNode } from 'react';
 import axios from 'axios'; // npm install axios
 
 export interface MealItem {
+  itemID: string;
+  mealID: string;
+  clientID: string;
   name: string;
   portion: string;
   calories: number;
@@ -130,3 +133,5 @@ export const useMeals = () => {
   }
   return context;
 };
+
+
