@@ -20,7 +20,6 @@ export const ItemProvider = ({ children }: { children: React.ReactNode }) => {
   const fetchItems = async () => {
     try {
       setLoading(true);
-      console.log("Feedback Dropdown items fetching started..."); 
       const response = await fetch(
         "http://10.0.2.2:5000/api/dietitian/dropdown_items"
       );

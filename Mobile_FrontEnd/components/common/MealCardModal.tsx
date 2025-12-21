@@ -81,46 +81,51 @@ export default function MealDetailModal({
     setFeedbackModalVisible(true);
   };
 
-  const handleSubmitFeedback = async (feedback: {
-    itemID: string;
-    isFollowed: boolean;
-    changedItems?: Array<{
-      itemName: string;
-      portion: number;
-    }> | null;
-  }) => {
-    try {
+const handleSubmitFeedback = async (feedback: {
+  itemID: string;
+  isFollowed: boolean;
+  changedItems?: Array<{
+    itemName: string;
+    portion: number;
+  }> | null;
+}) => {
+  try {
+    // Format changed_item as a string (can contain multiple items)
+    let changed_item_string = null;
+    
+    if (feedback.changedItems && feedback.changedItems.length > 0) {
+      // Join multiple items into a single string
+      changed_item_string = feedback.changedItems
+        .map(item => `${item.itemName} - ${item.portion}g`)
+        .join(', ');
+    }
+    
     const feedbackData = {
       client_id: selectedFeedbackItem?.clientID,
       meal_id: selectedFeedbackItem?.mealID,
       item_id: feedback.itemID,
       is_followed: feedback.isFollowed,
-      changed_item: feedback.changedItems && feedback.changedItems.length > 0 
-        ? {
-            itemName: feedback.changedItems[0].itemName,
-            portion: feedback.changedItems[0].portion
-          }
-        : null
+      changed_item: changed_item_string // Send as string or null [Json format]
     };
-      
-      console.log('Sending feedback to backend:', feedbackData);
+    
+    console.log('Sending feedback to backend:', feedbackData);
 
-      // TODO: Call backend API
-      // const response = await fetch('http://10.0.2.2:5000/api/dietitian/client_feedback', {
-      //   method: 'PATCH',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(feedbackData)
-      // });
+    // TODO: Call backend API
+    // const response = await fetch('http://10.0.2.2:5000/api/dietitian/client_feedback', {
+    //   method: 'PATCH',
+    //   headers: { 'Content-Type': 'application/json' },
+    //   body: JSON.stringify(feedbackData)
+    // });
 
-      Alert.alert('Success', 'Feedback saved successfully!');
-      
-      setFeedbackModalVisible(false);
-      setSelectedFeedbackItem(null);
-    } catch (error) {
-      console.error('Error submitting feedback:', error);
-      Alert.alert('Error', 'Failed to save feedback');
-    }
-  };
+    Alert.alert('Success', 'Feedback saved successfully!');
+    
+    setFeedbackModalVisible(false);
+    setSelectedFeedbackItem(null);
+  } catch (error) {
+    console.error('Error submitting feedback:', error);
+    Alert.alert('Error', 'Failed to save feedback');
+  }
+};
 
   return (
     <Modal

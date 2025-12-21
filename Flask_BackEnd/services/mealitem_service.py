@@ -27,10 +27,7 @@ OUTPUT RULES:
 JSON FORMAT:
 {
   "status": "ok | no_alternative",
-  "recommended_food": {
-    "name": "string",
-    "portion": "string"
-  },
+  "recommended_food": "food name - portion"
 }
 """
 
