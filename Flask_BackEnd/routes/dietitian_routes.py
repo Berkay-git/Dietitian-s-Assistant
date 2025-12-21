@@ -403,18 +403,17 @@ def get_alternative_meal_item():
         item_id = data['item_id']
         
         # Call the service method
-        success, message, alternative_item = get_alternative_mealitem(client_id, meal_id, item_id)
+        success, alternative_item = get_alternative_mealitem(client_id, meal_id, item_id)
         
         if success:
             return jsonify({
                 'success': True,
-                'message': message,
                 'alternative': alternative_item
             }), 200
         else:
             return jsonify({
                 'success': False,
-                'error': message
+                'error': "Error getting alternative meal item"
             }), 400
             
     except Exception as e:
@@ -451,7 +450,7 @@ def update_mealitem_alternative():
         if success:
             return jsonify({
                 'success': True,
-                'message': message, #Success message
+                'message': message, #alternative food message
             }), 200
         else:
             return jsonify({

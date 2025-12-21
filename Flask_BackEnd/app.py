@@ -2,9 +2,21 @@ from flask import Flask
 from flask_cors import CORS
 from db_config import db
 from flask_migrate import Migrate
+
+from dotenv import load_dotenv
 import os
 
-# dietisyen için için yeni blueprint yazıcaz 
+load_dotenv() # .env dosyasını yükle (Yani API Key'i çağır)
+
+# API Key debugging
+print("=" * 50)
+print("🔑 Checking OpenAI API Key...")
+api_key = os.getenv('OPENAI_API_KEY')
+if api_key:
+    print(f"✅ API Key loaded: {api_key[:10]}...{api_key[-4:]}")
+else:
+    print("❌ API Key NOT found!")
+print("=" * 50)
 
 def create_app():
     app = Flask(__name__)

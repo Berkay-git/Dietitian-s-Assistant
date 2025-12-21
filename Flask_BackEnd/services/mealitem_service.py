@@ -4,6 +4,13 @@ from services.item_service import get_item_by_id, calculate_item_calories, calcu
 
 from datetime import date
 
+
+import openai #pip install openai python-dotenv
+import os
+import json
+
+openai.api_key = os.getenv('OPENAI_API_KEY') # Get the API key from environment variable (.env)
+
 STATIC_ALTERNATIVE_PROMPT = """
 You are a dietitian support assistant.
 The information provided has been prepared by a dietitian.
@@ -22,15 +29,16 @@ OUTPUT RULES:
 - Do not include any text outside the JSON FORMAT.
 - If no suitable alternative is available, set status to "no_alternative" and set recommended_food to null.
 - If an alternative is found, set status to "ok".
+- Portion should be in grams and number without decimals. 
+- Calories should be rounded to nearest whole number. Protein, carb, and fat should be rounded to one decimal place.
 
 
 JSON FORMAT:
 {
   "status": "ok | no_alternative",
-  "recommended_food": "food name - portion"
+  "recommended_food": "food name - portion - calories - protein - carb - fat" | null
 }
 """
-
 
 
 
@@ -616,17 +624,29 @@ def build_alternative_prompt(client_id, meal_id, item_id):
         return None
 
 
+def generate_chatgpt_response(prompt):
+    """
+    Generate response from ChatGPT using OpenAI API
+    """
+    try:
+        response = openai.responses.create(
+            model="gpt-4.1-nano",
+            input=prompt,
+            max_output_tokens=300,
+            temperature=0.7,
+            response_format={"type": "json_object"}  # JSON formatında döndür
+        )
+        
+        return response.output_text
+    except Exception as e:
+        print(f"Error in generate_chatgpt_response: {e}")
+        raise
+
 def get_alternative_mealitem(client_id, meal_id, item_id):
-
-    # call the build_alternative_prompt to get the full prompt
-    # call the LLM with the prompt and get the response
-    # return the response to the route
-
     """
     Get alternative meal item suggestion using LLM
-
+    
     """
-
     try:
         # Build the full prompt
         full_prompt = build_alternative_prompt(client_id, meal_id, item_id)
@@ -634,22 +654,63 @@ def get_alternative_mealitem(client_id, meal_id, item_id):
         if not full_prompt:
             return False, "Prompt oluşturulamadı", None
         
-        # TODO: Call LLM API here with the prompt
-        # Example:
-        # import anthropic
-        # client = anthropic.Anthropic(api_key="your-api-key")
-        # response = client.messages.create(
-        #     model="gpt-nano-4.1",
-        #     max_tokens=1024,
-        #     messages=[{"role": "user", "content": full_prompt}]
-        # )
-        # alternative_suggestion = response.content[0].text
+        print("🤖 Calling OpenAI API...")
         
-        # For now, return placeholder
-        return False, "LLM entegrasyonu henüz tamamlanmadı", None
+        # Set API key from environment variable
+        openai.api_key = os.getenv('OPENAI_API_KEY')
         
+        if not openai.api_key:
+            return False, "OpenAI API key bulunamadı", None
+        
+        # Call the helper function with your custom API
+        response_text = generate_chatgpt_response(full_prompt)
+        print(f"📥 LLM Raw Response: {response_text}")
+        
+        # Parse JSON response
+        try:
+            # response_format={"type": "json_object"} kullandığımız için
+            # markdown code block olmadan direkt JSON gelecek o yüzden ekstra işlem yapmaya gerek yok
+            llm_response = json.loads(response_text)
+            
+            # Validate response structure
+            if 'status' not in llm_response:
+                return False, "Geçersiz LLM yanıtı (status eksik)", None
+            
+            # Check status
+            if llm_response['status'] == 'no_alternative':
+                return True, "Uygun alternatif bulunamadı", {
+                    'status': 'no_alternative',
+                    'recommended_food': None
+                }
+            
+            # If status is 'ok', validate recommended_food
+            if llm_response['status'] == 'ok':
+                if 'recommended_food' not in llm_response or not llm_response['recommended_food']:
+                    return False, "Geçersiz LLM yanıtı (recommended_food eksik)", None
+                
+                print(f"✅ Alternative found: {llm_response['recommended_food']}")
+                return True, "Alternatif başarıyla oluşturuldu", {
+                    'status': 'ok',
+                    'recommended_food': llm_response['recommended_food']
+                }
+            
+            return False, f"Beklenmeyen status değeri: {llm_response['status']}", None
+            
+        except (json.JSONDecodeError, ValueError) as e:
+            print(f"❌ Error parsing LLM response: {e}")
+            print(f"Raw response: {response_text}")
+            return False, "LLM yanıtı işlenemedi", None
+    
+    except openai.RateLimitError:
+        print("⚠️ OpenAI Rate limit exceeded")
+        return False, "API rate limit aşıldı. Lütfen daha sonra tekrar deneyin.", None
+    
+    except openai.APIError as e:
+        print(f"❌ OpenAI API error: {e}")
+        return False, "AI servisi geçici olarak kullanılamıyor", None
+    
     except Exception as e:
-        print(f"Error in get_alternative_mealitem: {str(e)}")
+        print(f"❌ Error in get_alternative_mealitem: {str(e)}")
         import traceback
         traceback.print_exc()
         return False, f"Server error: {str(e)}", None
