@@ -152,13 +152,76 @@ def get_client_meal_plans(client_id):
         print(f"Error fetching plans: {e}")
         return []
 
-# --- Function 3: Legacy Support ---
+# Elleme MURAT bu bizim
 def get_meals_by_clientid_and_date(client_id, plan_date):
     try:
         plan = DailyMealPlan.query.filter_by(ClientID=client_id, PlanDate=plan_date).first()
         if not plan:
-            return None
-        return plan.meals 
+            return []
+        
+        meals = Meal.query.filter_by(MealPlanID=plan.MealPlanID).all()
+        meals_data = []
+        
+        for m in meals:
+            # Join with Item table to get macros
+            meal_items = db.session.query(MealItem, Item)\
+                .join(Item, MealItem.ItemID == Item.ItemID)\
+                .filter(MealItem.MealID == m.MealID).all()
+            
+            items_data = []
+            total_calories = 0
+            total_protein = 0
+            total_carb = 0
+            total_fat = 0
+            
+            for mi, item in meal_items:
+                # Calculate Calories: (4*Pro + 4*Carb + 9*Fat) * ratio
+                base_cals = (4 * (item.ItemProtein or 0)) + \
+                            (4 * (item.ItemCarb or 0)) + \
+                            (9 * (item.ItemFat or 0))
+                
+                ratio = mi.ConsumeAmount / 100.0
+                actual_cals = base_cals * ratio
+                
+                scaled_protein = (item.ItemProtein or 0) * ratio
+                scaled_carb = (item.ItemCarb or 0) * ratio
+                scaled_fat = (item.ItemFat or 0) * ratio
+                
+                total_calories += actual_cals
+                total_protein += scaled_protein
+                total_carb += scaled_carb
+                total_fat += scaled_fat
+                
+                items_data.append({
+                    'name': item.ItemName,
+                    'portion': f"{mi.ConsumeAmount}g",
+                    'calories': round(actual_cals),
+                    'protein': round(scaled_protein, 1),
+                    'carb': round(scaled_carb, 1),
+                    'fat': round(scaled_fat, 1),
+                    'isFollowed': mi.isFollowed,
+                    'changedItem': mi.ChangedItem,
+                    'canChange': mi.canChange,
+                    'isLLM': mi.isLLM
+                })
+            
+            # Check if meal is completed (all items have isFollowed != None)
+            is_completed = all(mi.isFollowed is not None for mi, _ in meal_items) if meal_items else False
+            
+            meals_data.append({
+                'mealID': m.MealID,
+                'mealName': m.MealName,
+                'timeRange': f"{m.MealStart} - {m.MealEnd}" if m.MealStart else "Flexible",
+                'totalCalories': round(total_calories),
+                'totalProtein': round(total_protein, 1),
+                'totalCarb': round(total_carb, 1),
+                'totalFat': round(total_fat, 1),
+                'isCompleted': is_completed,
+                'items': items_data
+            })
+        
+        return meals_data
+        
     except Exception as e:
         print(f"Error fetching meals: {e}")
         return []
