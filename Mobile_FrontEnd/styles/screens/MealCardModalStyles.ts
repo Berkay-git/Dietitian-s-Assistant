@@ -242,5 +242,45 @@ export const mealCardModalStyles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  
+  llmContainer: {
+    marginTop: 10,
+    padding: 10,
+    backgroundColor: "#F4F6FF",
+    borderRadius: 10,
+  },
+
+  llmLoading: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+
+  llmLoadingText: {
+    fontSize: 12,
+    color: "#555",
+  },
+
+  llmResultCard: {
+    marginTop: 5,
+  },
+
+  llmTitle: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#6C63FF",
+    marginBottom: 4,
+  },
+
+  llmItemName: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+
+  llmPortion: {
+    fontSize: 12,
+    color: "#666",
+    marginBottom: 6,
+  },
 
 });

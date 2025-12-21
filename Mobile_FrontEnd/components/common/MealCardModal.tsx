@@ -1,9 +1,10 @@
-import { Modal, View, Text, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { Modal, View, Text, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { useState } from 'react';
 import { mealCardModalStyles as styles } from '../../styles/screens/MealCardModalStyles';
 import FeedbackModal from './FeedbackModal';
 import {useItems} from "@/context/ItemContext";
 import { MealItem } from '@/context/MealsContext';
+import { advanceAnimationByFrame } from 'react-native-reanimated';
 
 interface MealDetailModalProps {
   visible: boolean;
@@ -42,7 +43,34 @@ export default function MealDetailModal({
   const allItemsChangeable = items.length > 0 && changeableItems.length === items.length;
   const someItemsChangeable = changeableItems.length > 0 && changeableItems.length < items.length;
   const noItemsChangeable = changeableItems.length === 0;
+
+  const [expandedItemID, setExpandedItemID] = useState<string | null>(null);
+  const [llmLoading, setLlmLoading] = useState(false);
+  const [llmResult, setLlmResult] = useState<any | null>(null);
+
+  const [aiTryCount, setAiTryCount] = useState<Record<string, number>>({});
+  const [acceptedAIItems, setAcceptedAIItems] = useState<Record<string, {
+    originalName: string;
+    aiItem: {
+      name: string;
+      portion: string;
+      calories: number;
+      protein: number;
+      carb: number;
+      fat: number;
+    };
+  }>>({});
+
   const {items : availableItems, loading} = useItems();
+
+  const mockLLMAlternative = {
+  name: "Cottage Cheese",
+  portion: "180g",
+  calories: 120,
+  protein: 18,
+  carb: 6,
+  fat: 3,
+  };
 
   const getFeedbackStatus = (
     isFollowed: boolean | null | undefined, 
@@ -71,6 +99,91 @@ export default function MealDetailModal({
     
     return { text: '⏳ Pending', color: '#FF9800' };
   };
+
+  const handleGetAlternative = (item: MealItem) => {
+    const currentTry = aiTryCount[item.itemID!] || 0;
+    if (currentTry >= 3) {
+    Alert.alert(
+      "Limit reached",
+      "You can request AI alternative maximum 3 times."
+    );
+    return;
+  }
+    if (expandedItemID === item.itemID) {
+      // kapat
+      setExpandedItemID(null);
+      setLlmResult(null);
+      return;
+    }
+
+    setAiTryCount(prev => ({
+      ...prev,
+      [item.itemID!]: currentTry + 1,
+    }));
+
+
+
+    setExpandedItemID(item.itemID!);
+    setLlmLoading(true);
+    setLlmResult(null);
+
+    // ⏳ fake LLM delay
+    setTimeout(() => {
+      setLlmResult(mockLLMAlternative);
+      setLlmLoading(false);
+    }, 1500);
+  };
+
+  const handleAcceptAI = (item: MealItem) => {
+    if (!llmResult) return;
+
+    setAcceptedAIItems(prev => ({
+      ...prev,
+      [item.itemID!]: {
+        originalName: item.name,
+        aiItem: llmResult,
+      },
+    }));
+
+    setExpandedItemID(null);
+    setLlmResult(null);
+  };
+
+  const handleCancelAI = () => {
+    setExpandedItemID(null);
+    setLlmResult(null);
+  };
+
+  const handleRegenerateAI = (item: MealItem) => {
+    const currentTry = aiTryCount[item.itemID!] || 0;
+
+    if (currentTry >= 3) {
+      Alert.alert(
+        "Limit reached",
+        "You can request AI alternative maximum 3 times."
+      );
+      return;
+    }
+
+    setAiTryCount(prev => ({
+      ...prev,
+      [item.itemID!]: currentTry + 1,
+    }));
+
+    setLlmLoading(true);
+    setLlmResult(null);
+
+    // fake regenerate
+    setTimeout(() => {
+      setLlmResult({
+        ...mockLLMAlternative,
+        calories: mockLLMAlternative.calories + Math.floor(Math.random() * 30),
+      });
+      setLlmLoading(false);
+    }, 1200);
+  };
+
+
 
   const handleItemFeedbackPress = (item: MealItem) => {
     if (item.isFollowed !== null && item.isFollowed !== undefined) {
@@ -186,14 +299,56 @@ const handleSubmitFeedback = async (feedback: {
             {/* Meal Items Detail */}
             <Text style={styles.sectionTitle}>Food Details ({items.length} items)</Text>
             {items.map((item, index) => {
+
               const feedbackStatus = getFeedbackStatus(item.isFollowed, item.isLLM, item.changedItem);
+               // Eğer AI kabul edildiyse bu item’ın yerine render edeceğiz
+              const acceptedAI = acceptedAIItems[item.itemID!];
+              const displayedItem = acceptedAI
+              ? {
+                  ...item,
+                  name: acceptedAI.aiItem.name,
+                  portion: acceptedAI.aiItem.portion,
+                  calories: acceptedAI.aiItem.calories,
+                  protein: acceptedAI.aiItem.protein,
+                  carb: acceptedAI.aiItem.carb,
+                  fat: acceptedAI.aiItem.fat,
+                }
+              : item;
+              const displayedName = acceptedAI ? acceptedAI.aiItem.name : item.name;
+              const displayedCalories = acceptedAI ? acceptedAI.aiItem.calories : item.calories;
+              const displayedProtein = acceptedAI ? acceptedAI.aiItem.protein : item.protein;
+              const displayedCarb = acceptedAI ? acceptedAI.aiItem.carb : item.carb;
+              const displayedFat = acceptedAI ? acceptedAI.aiItem.fat : item.fat;
+              const displayedPortion = acceptedAI ? acceptedAI.aiItem.portion : item.portion;
               
               return (
                 <View key={index} style={styles.itemCard}>
                   <View style={styles.itemHeader}>
                     <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' }}>
-                      <Text style={styles.itemName}>{item.name}</Text>
-                      
+                      {/*  İsim render: Accept varsa eskiyi çiz + yanına yeni */}
+                      {acceptedAI ? (
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                          <Text
+                            style={[
+                              styles.itemName,
+                              { color: '#E53935', marginRight: 6 } // 🔴 eski ürün
+                            ]}
+                          >
+                            {acceptedAI.originalName}
+                          </Text>
+
+                          <Text
+                            style={[
+                              styles.itemName,
+                              { color: '#2E7D32' } // 🟢 yeni ürün
+                            ]}
+                          >
+                            {displayedItem.name}
+                          </Text>
+                        </View>
+                      ) : (
+                        <Text style={styles.itemName}>{item.name}</Text>
+                      )}
                       {/* Alternative badge */}
                       {item.canChange && (
                         <View style={styles.changeableBadge}>
@@ -201,7 +356,7 @@ const handleSubmitFeedback = async (feedback: {
                         </View>
                       )}
                     </View>
-                    <Text style={styles.itemCalories}>{item.calories} kcal</Text>
+                    <Text style={styles.itemCalories}>{displayedItem.calories} kcal</Text>
                   </View>
                   
                   <Text style={styles.itemPortion}>{item.portion}</Text>
@@ -215,9 +370,9 @@ const handleSubmitFeedback = async (feedback: {
                   
                   {/* Macro indicators */}
                   <View style={styles.macroRow}>
-                    <Text style={styles.macroText}>P: {item.protein}g</Text>
-                    <Text style={styles.macroText}>C: {item.carb}g</Text>
-                    <Text style={styles.macroText}>F: {item.fat}g</Text>
+                    <Text style={styles.macroText}>P: {displayedItem.protein}g</Text>
+                    <Text style={styles.macroText}>C: {displayedItem.carb}g</Text>
+                    <Text style={styles.macroText}>F: {displayedItem.fat}g</Text>
                   </View>
 
                   {/* Individual Item Action Buttons - Feedback verilmemişse göster */}
@@ -233,13 +388,69 @@ const handleSubmitFeedback = async (feedback: {
                       {item.canChange && (
                         <TouchableOpacity
                           style={styles.itemAlternativeBtn}
-                          onPress={() => {
-                            // TODO: Handle get alternative
-                            Alert.alert('Info', 'Get Alternative functionality coming soon');
-                          }}
+                          onPress={() => handleGetAlternative(item)} 
                         >
                           <Text style={styles.itemAlternativeBtnText}>Get Alternative</Text>
                         </TouchableOpacity>
+                      )}
+                    </View>
+                  )}
+                  {/* 🔽 LLM ALTERNATIVE — SADECE BURAYA EKLENDİ */}
+                  {expandedItemID === item.itemID && (
+                    <View style={styles.llmContainer}>
+                      {llmLoading ? (
+                        <View style={styles.llmLoading}>
+                          <ActivityIndicator size="small" color="#6C63FF" />
+                          <Text style={styles.llmLoadingText}>
+                            AI is generating alternative...
+                          </Text>
+                        </View>
+                      ) : llmResult && (
+                        <View style={styles.llmResultCard}>
+                          <Text style={styles.llmTitle}>Alternative Suggestion</Text>
+
+                          <Text style={styles.llmItemName}>
+                            {llmResult.name}
+                          </Text>
+
+                          <Text style={styles.llmPortion}>
+                            {llmResult.portion} · {llmResult.calories} kcal
+                          </Text>
+
+                          <View style={styles.macroRow}>
+                            <Text>P: {llmResult.protein}g</Text>
+                            <Text>C: {llmResult.carb}g</Text>
+                            <Text>F: {llmResult.fat}g</Text>
+                          </View>
+
+                          {/* ✅ ACCEPT / CANCEL */}
+                          <View style={{ flexDirection: "row", marginTop: 12, justifyContent: 'space-between', gap: 10 }}>
+                            <TouchableOpacity
+                              style={[
+                                styles.itemAlternativeBtn,
+                                {flex: 1}
+                              ]}
+                              onPress={() => handleRegenerateAI(item)}
+                            >
+                              <Text style={styles.itemAlternativeBtnText}>
+                                Generate({3 - (aiTryCount[item.itemID!] || 0)})
+                              </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={[styles.itemFeedbackBtn, { flex: 1 }]}
+                              onPress={() => handleAcceptAI(item)}
+                            >
+                              <Text style={styles.itemFeedbackBtnText}>Accept</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                              style={[styles.itemAlternativeBtn, { flex: 1 }]}
+                              onPress={handleCancelAI}
+                            >
+                              <Text style={styles.itemAlternativeBtnText}>Cancel</Text>
+                            </TouchableOpacity>
+                          </View>
+                        </View>
                       )}
                     </View>
                   )}
@@ -306,3 +517,4 @@ const handleSubmitFeedback = async (feedback: {
     </Modal>
   );
 }
+
