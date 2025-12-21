@@ -193,6 +193,9 @@ def get_meals_by_clientid_and_date(client_id, plan_date):
                 total_fat += scaled_fat
                 
                 items_data.append({
+                    'itemID': item.ItemID,
+                    'mealID': m.MealID, 
+                    'clientID': client_id,
                     'name': item.ItemName,
                     'portion': f"{mi.ConsumeAmount}g",
                     'calories': round(actual_cals),
