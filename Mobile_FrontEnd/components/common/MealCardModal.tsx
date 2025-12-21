@@ -58,7 +58,6 @@ export default function MealDetailModal({
   const someItemsChangeable = changeableItems.length > 0 && changeableItems.length < items.length;
   const noItemsChangeable = changeableItems.length === 0;
   const {items : availableItems, loading} = useItems();
-  console.log("AVAILABLE ITEMS:", availableItems);
 
   const getFeedbackStatus = (
     isFollowed: boolean | null | undefined, 

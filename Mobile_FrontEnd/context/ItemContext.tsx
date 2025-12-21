@@ -20,13 +20,12 @@ export const ItemProvider = ({ children }: { children: React.ReactNode }) => {
   const fetchItems = async () => {
     try {
       setLoading(true);
-      console.log("FETCH ITEMS CALLED"); 
+      console.log("Feedback Dropdown items fetching started..."); 
       const response = await fetch(
         "http://10.0.2.2:5000/api/dietitian/dropdown_items"
       );
 
       const data = await response.json();
-      console.log("RAW ITEM DATA:", data); 
 
       const mapped: AvailableItem[] = data.map((item: any) => ({
         itemID: item.ItemID.toString(),
