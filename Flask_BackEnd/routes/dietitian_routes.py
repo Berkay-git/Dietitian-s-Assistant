@@ -344,28 +344,27 @@ def update_client(client_id):
 
 # Web
 @dietitian_bp.route('/meal-plans', methods=['GET'])
-def get_meal_plans():
+def api_get_meal_plans(): 
     try:
         client_id = request.args.get('client_id')
         if not client_id:
             return jsonify({'error': 'Client ID required'}), 400
 
-        # 3. CALL FUNCTION DIRECTLY (No Class)
+        # Call the function from the imported module
         plans = get_client_meal_plans(client_id)
-        
         return jsonify(plans), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 # Web    
 @dietitian_bp.route('/meal-plans', methods=['POST'])
-def create_meal_plan():
+def api_create_meal_plan():  # <--- RENAMED THIS to avoid conflict
     try:
         data = request.get_json()
         if not data.get('client_id') or not data.get('date'):
             return jsonify({'error': 'Client ID and Date are required'}), 400
 
-        # Calls the function we defined in services/meal_service.py
+        # Now we call the function from the imported module variable
         success, message = create_meal_plan(data)
         
         if success:
