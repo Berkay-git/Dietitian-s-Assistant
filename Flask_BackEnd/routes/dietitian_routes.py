@@ -6,13 +6,16 @@ from services.allServices import AuthService
 import jwt #Session yerine token, Web+Mobil için ideal,  pip install PyJWT (Backend terminali içerisinde yaz, genel klasöre yazma)
 from datetime import datetime, timedelta, date
 from db_config import Config
+import traceback
 
 from models.models import Client # Import client details
 from services.dailymealplan_service import *
 from models.models import Client, PhysicalDetails, MedicalDetails
-from services.client_service import ClientService
+from services.client_service import *
 from services.mealitem_service import *
-import services.meal_service as meal_service
+from services.meal_service import *
+
+
 
 dietitian_bp = Blueprint('dietitian', __name__)
 
@@ -255,7 +258,7 @@ def add_client():
             return jsonify({'error': 'Dietitian ID is missing'}), 400
 
         # Call the Service
-        success, message, client = ClientService.create_client(dietitian_id, data)
+        success, message, client = create_client(dietitian_id, data)
         
         if success:
             return jsonify({
@@ -269,29 +272,46 @@ def add_client():
         return jsonify({'error': str(e)}), 500
     
 
-
-@dietitian_bp.route('/client_feedback', methods=['POST'])
-def give_Feedback(clientID,mealID,itemID,changedItem,isFollowed,isLLM = 0):
+# Update only manual changed meal item feedback
+@dietitian_bp.route('/client_feedback', methods=['PATCH']) #Kısmı güncelleme için PATCH
+def give_Feedback():
     try:
-        if isLLM:
-            success, message, updated_item = give_feedback_on_mealitem_via_LLM(
-                clientID,mealID,itemID,changedItem,isFollowed
-            )
-        else:
-            success, message, updated_item = give_feedback_on_mealitem_manually(
-                clientID,mealID,itemID,changedItem,isFollowed
-            )
+        data = request.get_json()
+        
+        # Validate required fields
+        if not data or not all(k in data for k in ('client_id', 'meal_id', 'item_id', 'is_followed')):
+            return jsonify({'error': 'client_id, meal_id, item_id ve is_followed gereklidir'}), 400
+        
+        # Get parameters from request
+        client_id = data['client_id']
+        meal_id = data['meal_id']
+        item_id = data['item_id']
+        is_followed = data['is_followed']
+        changed_item = data.get('changed_item', None)
+
+        success, message, updated_item = give_feedback_on_mealitem_manually(
+            client_id=client_id,
+            meal_id=meal_id,
+            item_id=item_id,
+            changedItem=changed_item,
+            is_followed=is_followed,
+        )
         
         if success:
             return jsonify({
+                'success': True,
                 'message': message,
                 'updated_item': updated_item
             }), 200
         else:
-            return jsonify({'error': message}), 400
+            return jsonify({
+                'success': False,
+                'error': message
+            }), 400
             
     except Exception as e:
         print(f"Error in give_Feedback: {str(e)}")
+        traceback.print_exc()
         return jsonify({'error': 'Server error'}), 500
     
 
@@ -309,7 +329,7 @@ def get_dropdown_available_items():
 def update_client(client_id):
     try:
         data = request.get_json()
-        success, message = ClientService.update_client_details(client_id, data)
+        success, message = update_client_details(client_id, data)
         if success:
             return jsonify({'message': message}), 200
         else:
@@ -325,7 +345,7 @@ def get_meal_plans():
             return jsonify({'error': 'Client ID required'}), 400
 
         # 3. CALL FUNCTION DIRECTLY (No Class)
-        plans = meal_service.get_client_meal_plans(client_id)
+        plans = get_client_meal_plans(client_id)
         
         return jsonify(plans), 200
     except Exception as e:
@@ -339,7 +359,7 @@ def create_meal_plan():
             return jsonify({'error': 'Client ID and Date are required'}), 400
 
         # Calls the function we defined in services/meal_service.py
-        success, message = meal_service.create_meal_plan(data)
+        success, message = create_meal_plan(data)
         
         if success:
             return jsonify({'message': message}), 201
@@ -347,3 +367,90 @@ def create_meal_plan():
             return jsonify({'error': message}), 400
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    
+@dietitian_bp.route('/alternative', methods=['POST'])
+def get_alternative_meal_item():
+    """
+    Get alternative meal item suggestion for a client using LLM
+
+    """
+    try:
+
+        """    
+        Expected JSON body:
+        - client_id: Client ID
+        - meal_id: Meal ID
+        - item_id: Item ID to be replaced
+        """
+
+        data = request.get_json()
+        
+        # Validate required fields
+        if not data or not all(k in data for k in ('client_id', 'meal_id', 'item_id')):
+            return jsonify({'error': 'client_id, meal_id ve item_id hatalı veya eksik'}), 400
+        
+        client_id = data['client_id']
+        meal_id = data['meal_id']
+        item_id = data['item_id']
+        
+        # Call the service method
+        success, message, alternative_item = get_alternative_mealitem(client_id, meal_id, item_id)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': message,
+                'alternative': alternative_item
+            }), 200
+        else:
+            return jsonify({
+                'success': False,
+                'error': message
+            }), 400
+            
+    except Exception as e:
+        print(f"Error in get_alternative_meal_item route: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': 'Server error'}), 500
+    
+
+# Update only LLM suggested alternative
+@dietitian_bp.route('/update_alternative', methods=['PUT']) #PUT OR PATCH
+def update_mealitem_alternative():
+    """
+    Update mealitem if user accepted the LLM suggested alternative
+
+    """
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        if not data or not all(k in data for k in ('client_id', 'meal_id', 'item_id', 'alternative_meal')):
+            return jsonify({'error': 'client_id, meal_id, item_id ve accepted_item_id hatalı veya eksik'}), 400
+        
+        client_id = data['client_id']
+        meal_id = data['meal_id']
+        item_id = data['item_id']
+        accepted_item_json = data['alternative_meal']
+        
+        # Call the service method
+        success, message = give_feedback_on_mealitem_via_LLM(
+            client_id, meal_id, item_id, accepted_item_json
+        )
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': message, #Success message
+            }), 200
+        else:
+            return jsonify({
+                'success': False,
+                'error': message
+            }), 400
+            
+    except Exception as e:
+        print(f"Error in update_mealitem_alternative route: {str(e)}")
+        traceback.print_exc()
+        return jsonify({'error': 'Server error'}), 500
