@@ -89,7 +89,7 @@ export default function MealDetailModal({
       return { text: '⚠️ Modified with AI', color: '#FF5722' };
     }
     
-    else if (isFollowed === false && canChange && changedItem != null && isLLM === false) {
+    else if (isFollowed === false && changedItem != null && isLLM === false) {
       return { text: '⚠️ Changed Manually', color: '#9C27B0' };
     }
     
@@ -223,20 +223,30 @@ const handleSubmitFeedback = async (feedback: {
     
     console.log('Sending feedback to backend:', feedbackData);
 
-    // TODO: Call backend API
-    // const response = await fetch('http://10.0.2.2:5000/api/dietitian/client_feedback', {
-    //   method: 'PATCH',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify(feedbackData)
-    // });
+    const response = await fetch('http://10.0.2.2:5000/api/dietitian/client_feedback', {
+      method: 'PATCH',
+      headers: { 
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(feedbackData)
+    });
 
-    Alert.alert('Success', 'Feedback saved successfully!');
+    const result = await response.json();
     
-    setFeedbackModalVisible(false);
-    setSelectedFeedbackItem(null);
+    if (response.ok) {
+      console.log('Feedback saved successfully:', result);
+      Alert.alert('Success', 'Feedback saved successfully!');
+      
+      setFeedbackModalVisible(false);
+      setSelectedFeedbackItem(null);
+    } else {
+      console.error('Error response:', result);
+      Alert.alert('Error', result.error || 'Failed to save feedback');
+    }
+    
   } catch (error) {
     console.error('Error submitting feedback:', error);
-    Alert.alert('Error', 'Failed to save feedback');
+    Alert.alert('Error', 'Failed to connect to server');
   }
 };
 
