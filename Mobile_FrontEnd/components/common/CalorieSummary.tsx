@@ -24,6 +24,9 @@ export default function CalorieSummary({ calories, macros }: Props) {
   const radius = 50;
   const strokeWidth = 7;
   const circumference = 2 * Math.PI * radius;
+  const isOverEaten = calories.remaining < 0;
+  const ringStrokeColor = isOverEaten ? "#FF9800" : "#4CAF50";
+
   
   const progress = 
     calories.total> 0
@@ -31,7 +34,7 @@ export default function CalorieSummary({ calories, macros }: Props) {
      : 0;
 
   const strokeDashoffset = circumference - circumference * progress;
-
+  
   const renderMacro = (
     label: string,
     color: string,
@@ -78,7 +81,7 @@ export default function CalorieSummary({ calories, macros }: Props) {
             cx="60"
             cy="60"
             r={radius}
-            stroke="#2ECC71"
+            stroke= {ringStrokeColor}
             strokeWidth={strokeWidth}
             fill="none"
             strokeDasharray={circumference}

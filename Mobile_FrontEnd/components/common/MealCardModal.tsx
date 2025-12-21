@@ -61,14 +61,14 @@ export default function MealDetailModal({
   }>>({});
 
   const { items: availableItems, loading } = useItems();
-  const { refreshMealPlan } = useMeals(); // ✅ MealsContext'ten refresh fonksiyonunu al
+  const { refreshMealPlan } = useMeals(); // MealsContext'ten refresh fonksiyonunu al
 
   const mockLLMAlternative = {
     name: "Cottage Cheese",
     portion: "180g",
     calories: 120,
     protein: 18,
-    carb: 6,
+    carb: 6.1,
     fat: 3,
   };
 
@@ -310,7 +310,7 @@ export default function MealDetailModal({
             {items.map((item, index) => {
               const feedbackStatus = getFeedbackStatus(item.isFollowed, item.isLLM, item.changedItem);
               
-              // ✅ Parse changedItem string: "name,portion,calories,protein,carb,fat;name2,..."
+              //  Parse changedItem string: "name,portion,calories,protein,carb,fat;name2,..."
               const changedItems: Array<{
                 name: string;
                 portion: string;
@@ -354,7 +354,7 @@ export default function MealDetailModal({
               
               return (
                 <View key={index} style={styles.itemCard}>
-                  {/* ✅ Eski item (üstü çizili) */}
+                  {/*  Eski item (üstü çizili) */}
                   {hasChangedItem && (
                     <View style={{ opacity: 0.5, marginBottom: 8 }}>
                       <View style={styles.itemHeader}>

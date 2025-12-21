@@ -487,3 +487,14 @@ def reactivate_client(client_id):
             return jsonify({'error': message}), 400
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    
+
+# to get items from database and use them when addin a meal to client.    
+@dietitian_bp.route('/items', methods=['GET'])
+def get_available_items():
+    try:
+        # Call the service function
+        items = get_all_items()
+        return jsonify(items), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
