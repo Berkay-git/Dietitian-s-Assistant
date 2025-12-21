@@ -4,21 +4,42 @@ import type { DailyMealPlan } from "../../context/MealsContext";
 /* =======================
    HELPERS
 ======================= */
+function parseChangedItemTotals(changedItem: string) {
+  let totals = {
+    calories: 0,
+    protein: 0,
+    carb: 0,
+    fat: 0,
+  };
+
+  const items = changedItem.split(";");
+
+  items.forEach(itemStr => {
+    const parts = itemStr.split(",");
+    if (parts.length === 6) {
+      totals.calories += Number(parts[2]) || 0;
+      totals.protein += Number(parts[3]) || 0;
+      totals.carb += Number(parts[4]) || 0;
+      totals.fat += Number(parts[5]) || 0;
+    }
+  });
+
+  return totals;
+}
 
 function isItemConsumed(item: DailyMealPlan["meals"][0]["items"][0]): boolean {
-  // 1️⃣ Diyetisyenin verdiğini aynen yemiş
+  //  Diyetisyenin verdiğini aynen yemiş
   if (item.isFollowed === true) return true;
 
-  // 2️⃣ Manuel değiştirip yemiş
+  //  Manuel değiştirip yemiş
   if (
     item.isFollowed === false &&
-    item.changedItem !== null &&
-    item.canChange === true
+    item.changedItem !== null 
   ) {
     return true;
   }
 
-  // 3️⃣ LLM ile değiştirip yemiş
+  //  LLM ile değiştirip yemiş
   if (
     item.isFollowed === false &&
     item.changedItem !== null &&
@@ -46,10 +67,19 @@ export function calculateDailySummary(
     fat: 0,
   };
 
-  // 🚨 YEŞİL TİK YOK – HER ZAMAN ITEM ITEM
+  //  YEŞİL TİK YOK – HER ZAMAN ITEM ITEM
   meals.forEach(meal => {
     meal.items.forEach(item => {
-      if (isItemConsumed(item)) {
+      if (!isItemConsumed(item)) return;
+
+      if (item.changedItem) {
+        const changedTotals = parseChangedItemTotals(item.changedItem);
+
+        consumed.calories += changedTotals.calories;
+        consumed.protein += changedTotals.protein;
+        consumed.carb += changedTotals.carb;
+        consumed.fat += changedTotals.fat;
+      } else {
         consumed.calories += item.calories;
         consumed.protein += item.protein;
         consumed.carb += item.carb;
