@@ -1,19 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-
-// --- MOCK FOOD DATABASE ---
-const FOOD_DATABASE = [
-  { id: 'f1', name: 'Apple', calories: 52, protein: 0.3, carbs: 14, fat: 0.2 },
-  { id: 'f2', name: 'Apricot', calories: 48, protein: 1.4, carbs: 11, fat: 0.4 },
-  { id: 'f3', name: 'Banana', calories: 89, protein: 1.1, carbs: 22.8, fat: 0.3 },
-  { id: 'f4', name: 'Butter', calories: 717, protein: 0.9, carbs: 0.1, fat: 81 },
-  { id: 'f5', name: 'Chicken Breast (Grilled)', calories: 165, protein: 31, carbs: 0, fat: 3.6 },
-  { id: 'f6', name: 'Chicken Thigh', calories: 209, protein: 26, carbs: 0, fat: 10.9 },
-  { id: 'f7', name: 'Rice (White, Cooked)', calories: 130, protein: 2.7, carbs: 28, fat: 0.3 },
-  { id: 'f8', name: 'Oatmeal', calories: 68, protein: 2.4, carbs: 12, fat: 1.4 },
-  { id: 'f9', name: 'Egg (Boiled)', calories: 155, protein: 13, carbs: 1.1, fat: 11 },
-  { id: 'f10', name: 'Almonds', calories: 579, protein: 21, carbs: 22, fat: 50 },
-];
 
 const INITIAL_MEALS = [
   {
@@ -68,9 +54,40 @@ function AddMealModal({ isOpen, onClose, onAdd }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFood, setSelectedFood] = useState(null);
   const [grams, setGrams] = useState(100); 
+  const [dbItems, setDbItems] = useState([]);
+
+  useEffect(() => {
+    const fetchItems = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/dietitian/items');
+        const data = await response.json();
+
+        if (response.ok) {
+          // 3. MAP: Convert Backend Keys (ItemName) -> Frontend Keys (name)
+          // This ensures your UI doesn't break!
+          const mappedItems = data.map(item => ({
+            id: item.ItemID,
+            name: item.ItemName,
+            calories: item.ItemCalories,
+            protein: item.ItemProtein,
+            carbs: item.ItemCarb,
+            fat: item.ItemFat,
+            amount: 100,     // Default value for UI
+            unit: 'g'        // Default unit
+          }));
+          
+          setDbItems(mappedItems);
+        }
+      } catch (error) {
+        console.error("Error fetching items:", error);
+      }
+    };
+
+    fetchItems();
+  }, []);
 
   if (!isOpen) return null;
-  const filteredFoods = FOOD_DATABASE.filter(food => food.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filteredFoods = dbItems.filter(food => food.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
   const handleSave = () => {
     if (selectedFood) {
