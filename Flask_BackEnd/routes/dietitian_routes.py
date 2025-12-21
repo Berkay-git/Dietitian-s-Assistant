@@ -12,6 +12,7 @@ from services.dailymealplan_service import *
 from models.models import Client, PhysicalDetails, MedicalDetails
 from services.client_service import ClientService
 from services.mealitem_service import *
+import services.meal_service as meal_service
 
 dietitian_bp = Blueprint('dietitian', __name__)
 
@@ -303,3 +304,46 @@ def get_dropdown_available_items():
     except Exception as e:
         print(f"Error in get_available_items: {str(e)}")
         return jsonify({'error': 'Server error'}), 500
+    
+@dietitian_bp.route('/clients/<client_id>', methods=['PUT'])
+def update_client(client_id):
+    try:
+        data = request.get_json()
+        success, message = ClientService.update_client_details(client_id, data)
+        if success:
+            return jsonify({'message': message}), 200
+        else:
+            return jsonify({'error': message}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@dietitian_bp.route('/meal-plans', methods=['GET'])
+def get_meal_plans():
+    try:
+        client_id = request.args.get('client_id')
+        if not client_id:
+            return jsonify({'error': 'Client ID required'}), 400
+
+        # 3. CALL FUNCTION DIRECTLY (No Class)
+        plans = meal_service.get_client_meal_plans(client_id)
+        
+        return jsonify(plans), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    
+@dietitian_bp.route('/meal-plans', methods=['POST'])
+def create_meal_plan():
+    try:
+        data = request.get_json()
+        if not data.get('client_id') or not data.get('date'):
+            return jsonify({'error': 'Client ID and Date are required'}), 400
+
+        # Calls the function we defined in services/meal_service.py
+        success, message = meal_service.create_meal_plan(data)
+        
+        if success:
+            return jsonify({'message': message}), 201
+        else:
+            return jsonify({'error': message}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
