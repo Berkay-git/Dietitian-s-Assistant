@@ -2,8 +2,8 @@ import { Modal, View, Text, TouchableOpacity, ScrollView, Alert, ActivityIndicat
 import { useState } from 'react';
 import { mealCardModalStyles as styles } from '../../styles/screens/MealCardModalStyles';
 import FeedbackModal from './FeedbackModal';
-import {useItems} from "@/context/ItemContext";
-import { MealItem } from '@/context/MealsContext';
+import { useItems } from "@/context/ItemContext";
+import { MealItem, useMeals } from '@/context/MealsContext';
 
 interface MealDetailModalProps {
   visible: boolean;
@@ -60,7 +60,8 @@ export default function MealDetailModal({
     };
   }>>({});
 
-  const {items : availableItems, loading} = useItems();
+  const { items: availableItems, loading } = useItems();
+  const { refreshMealPlan } = useMeals(); // ✅ MealsContext'ten refresh fonksiyonunu al
 
   const mockLLMAlternative = {
     name: "Cottage Cheese",
@@ -109,7 +110,6 @@ export default function MealDetailModal({
       return;
     }
     if (expandedItemID === item.itemID) {
-      // kapat
       setExpandedItemID(null);
       setLlmResult(null);
       return;
@@ -124,7 +124,7 @@ export default function MealDetailModal({
     setLlmLoading(true);
     setLlmResult(null);
 
-    // ⏳ fake LLM delay
+    // Fake LLM API call delay
     setTimeout(() => {
       setLlmResult(mockLLMAlternative);
       setLlmLoading(false);
@@ -170,7 +170,6 @@ export default function MealDetailModal({
     setLlmLoading(true);
     setLlmResult(null);
 
-    // fake regenerate
     setTimeout(() => {
       setLlmResult({
         ...mockLLMAlternative,
@@ -198,11 +197,10 @@ export default function MealDetailModal({
     }> | null;
   }) => {
     try {
-      // ✅ Format changed_item as: "Name - portionG, Name2 - portionG" (Database format)
+      // Format changed_item as: "Name - portionG, Name2 - portionG" (Database format)
       let changed_item_string = null;
       
       if (feedback.changedItems && feedback.changedItems.length > 0) {
-        // Join with ", " for database storage
         changed_item_string = feedback.changedItems
           .map(item => `${item.itemName} - ${item.portion}g`)
           .join(', ');
@@ -213,7 +211,7 @@ export default function MealDetailModal({
         meal_id: selectedFeedbackItem?.mealID,
         item_id: feedback.itemID,
         is_followed: feedback.isFollowed,
-        changed_item: changed_item_string  // "Greek Yogurt - 150g, Honey - 20g"
+        changed_item: changed_item_string
       };
       
       console.log('Sending feedback to backend:', feedbackData);
@@ -230,10 +228,16 @@ export default function MealDetailModal({
       
       if (response.ok) {
         console.log('Feedback saved successfully:', result);
+        
+        // ✅ Feedback başarılı olduktan sonra meal plan'ı yeniden yükle
+        await refreshMealPlan();
+        
         Alert.alert('Success', 'Feedback saved successfully!');
         
         setFeedbackModalVisible(false);
         setSelectedFeedbackItem(null);
+        
+        onClose();
       } else {
         console.error('Error response:', result);
         Alert.alert('Error', result.error || 'Failed to save feedback');
@@ -317,7 +321,6 @@ export default function MealDetailModal({
               }> = [];
               
               if (item.changedItem) {
-                // Split by semicolon for multiple items
                 const itemsArray = item.changedItem.split(';');
                 itemsArray.forEach((itemStr: string) => {
                   const parts = itemStr.split(',');
@@ -336,7 +339,6 @@ export default function MealDetailModal({
               
               const hasChangedItem = changedItems.length > 0;
 
-              // Eğer AI kabul edildiyse bu item'ın yerine render edeceğiz
               const acceptedAI = acceptedAIItems[item.itemID!];
               const displayedItem = acceptedAI
                 ? {
@@ -352,7 +354,7 @@ export default function MealDetailModal({
               
               return (
                 <View key={index} style={styles.itemCard}>
-                  {/* ✅ Eski item (üstü çizili) - sadece changedItem varsa göster */}
+                  {/* ✅ Eski item (üstü çizili) */}
                   {hasChangedItem && (
                     <View style={{ opacity: 0.5, marginBottom: 8 }}>
                       <View style={styles.itemHeader}>
@@ -384,7 +386,7 @@ export default function MealDetailModal({
                     </View>
                   )}
 
-                  {/* ✅ Yeni item(lar) - changedItem varsa bunları göster */}
+                  {/*  Changed new itmes*/}
                   {hasChangedItem ? (
                     changedItems.map((changedItem, idx) => (
                       <View key={`changed-${idx}`} style={{ marginBottom: idx < changedItems.length - 1 ? 8 : 0 }}>
@@ -422,27 +424,15 @@ export default function MealDetailModal({
                       </View>
                     ))
                   ) : (
-                    // ✅ Değişiklik yoksa normal göster (veya AI accepted item)
                     <>
                       <View style={styles.itemHeader}>
                         <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' }}>
                           {acceptedAI ? (
                             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                              <Text
-                                style={[
-                                  styles.itemName,
-                                  { color: '#E53935', marginRight: 6 } // 🔴 eski ürün
-                                ]}
-                              >
+                              <Text style={[styles.itemName, { color: '#E53935', marginRight: 6 }]}>
                                 {acceptedAI.originalName}
                               </Text>
-
-                              <Text
-                                style={[
-                                  styles.itemName,
-                                  { color: '#2E7D32' } // 🟢 yeni ürün
-                                ]}
-                              >
+                              <Text style={[styles.itemName, { color: '#2E7D32' }]}>
                                 {displayedItem.name}
                               </Text>
                             </View>
@@ -469,14 +459,12 @@ export default function MealDetailModal({
                     </>
                   )}
                   
-                  {/* Feedback status badge */}
                   <View style={[styles.feedbackBadge, { backgroundColor: feedbackStatus.color + '20' }]}>
                     <Text style={[styles.feedbackBadgeText, { color: feedbackStatus.color }]}>
                       {feedbackStatus.text}
                     </Text>
                   </View>
 
-                  {/* Individual Item Action Buttons - Feedback verilmemişse göster */}
                   {(item.isFollowed === null || item.isFollowed === undefined) && (
                     <View style={styles.itemActionButtons}>
                       <TouchableOpacity
@@ -497,7 +485,6 @@ export default function MealDetailModal({
                     </View>
                   )}
 
-                  {/* 🔽 LLM ALTERNATIVE */}
                   {expandedItemID === item.itemID && (
                     <View style={styles.llmContainer}>
                       {llmLoading ? (
@@ -510,27 +497,18 @@ export default function MealDetailModal({
                       ) : llmResult && (
                         <View style={styles.llmResultCard}>
                           <Text style={styles.llmTitle}>Alternative Suggestion</Text>
-
-                          <Text style={styles.llmItemName}>
-                            {llmResult.name}
-                          </Text>
-
+                          <Text style={styles.llmItemName}>{llmResult.name}</Text>
                           <Text style={styles.llmPortion}>
                             {llmResult.portion} · {llmResult.calories} kcal
                           </Text>
-
                           <View style={styles.macroRow}>
                             <Text>P: {llmResult.protein}g</Text>
                             <Text>C: {llmResult.carb}g</Text>
                             <Text>F: {llmResult.fat}g</Text>
                           </View>
-
                           <View style={{ flexDirection: "row", marginTop: 12, justifyContent: 'space-between', gap: 10 }}>
                             <TouchableOpacity
-                              style={[
-                                styles.itemAlternativeBtn,
-                                {flex: 1}
-                              ]}
+                              style={[styles.itemAlternativeBtn, {flex: 1}]}
                               onPress={() => handleRegenerateAI(item)}
                             >
                               <Text style={styles.itemAlternativeBtnText}>
@@ -543,7 +521,6 @@ export default function MealDetailModal({
                             >
                               <Text style={styles.itemFeedbackBtnText}>Accept</Text>
                             </TouchableOpacity>
-
                             <TouchableOpacity
                               style={[styles.itemAlternativeBtn, { flex: 1 }]}
                               onPress={handleCancelAI}
@@ -561,7 +538,6 @@ export default function MealDetailModal({
 
             <View style={styles.divider} />
 
-            {/* Feedback Durumu */}
             <Text style={styles.sectionTitle}>Feedback Status</Text>
             {isCompleted ? (
               <Text style={styles.feedbackText}>✓ Feedback is given</Text>
@@ -571,7 +547,6 @@ export default function MealDetailModal({
 
             <View style={styles.divider} />
 
-            {/* AI Tavsiye Alanı */}
             <Text style={styles.sectionTitle}>Alternative Status</Text>
             
             {allItemsChangeable ? (
@@ -596,12 +571,10 @@ export default function MealDetailModal({
                 </Text>
               </View>
             )}
-
           </ScrollView>
         </View>
       </View>
 
-      {/* Feedback Modal */}
       {selectedFeedbackItem && (
         <FeedbackModal
           visible={feedbackModalVisible}
