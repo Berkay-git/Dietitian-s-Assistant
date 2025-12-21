@@ -89,10 +89,10 @@ export function calculateDailySummary(
   });
 
   const remaining = {
-    calories: Math.max(dailyTotals.calories - consumed.calories, 0),
-    protein: Math.max(dailyTotals.protein - consumed.protein, 0),
-    carb: Math.max(dailyTotals.carb - consumed.carb, 0),
-    fat: Math.max(dailyTotals.fat - consumed.fat, 0),
+    calories: dailyTotals.calories - consumed.calories,
+    protein: dailyTotals.protein - consumed.protein,
+    carb: dailyTotals.carb - consumed.carb,
+    fat: dailyTotals.fat - consumed.fat,
   };
 
   return {
