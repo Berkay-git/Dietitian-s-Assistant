@@ -152,7 +152,7 @@ def get_client_meal_plans(client_id):
         print(f"Error fetching plans: {e}")
         return []
 
-# Elleme MURAT bu bizim
+# MOBILE
 def get_meals_by_clientid_and_date(client_id, plan_date):
     try:
         plan = DailyMealPlan.query.filter_by(ClientID=client_id, PlanDate=plan_date).first()

@@ -19,6 +19,8 @@ from services.meal_service import *
 
 dietitian_bp = Blueprint('dietitian', __name__)
 
+
+# Mobile and Web
 @dietitian_bp.route('/auth', methods=['POST'])
 def login():
     try:
@@ -81,7 +83,7 @@ def login():
         print(f"Exception message: {str(e)}")
         return jsonify({'error': 'Sunucu hatası'}), 500
     
-
+# Mobile
 @dietitian_bp.route('/meals', methods=['GET'])
 def getMeals():
     """
@@ -124,7 +126,7 @@ def getMeals():
         print(f"Error in getMeals: {str(e)}")
         return jsonify({'error': 'Sunucu hatası'}), 500
 
-
+# Mobile
 @dietitian_bp.route('/meals/available-dates', methods=['GET'])
 def getAvailableDates():
     """
@@ -153,7 +155,7 @@ def getAvailableDates():
         return jsonify({'error': 'Server error'}), 500
     
 
-
+# Web
 @dietitian_bp.route('/register', methods=['POST'])
 def register():
     try:
@@ -182,7 +184,7 @@ def register():
         print(f"Register Error: {str(e)}")
         return jsonify({'error': 'Sunucu hatası'}), 500
     
-
+# Web
 @dietitian_bp.route('/clients', methods=['GET'])
 def get_my_clients():
     try:
@@ -205,7 +207,7 @@ def get_my_clients():
         return jsonify({'error': 'Server error'}), 500
     
 
-
+# Web
 @dietitian_bp.route('/client-details/<client_id>', methods=['GET'])
 def get_client_full_details(client_id):
     try:
@@ -245,7 +247,7 @@ def get_client_full_details(client_id):
         print(f"Error fetching details: {e}")
         return jsonify({'error': 'Server error'}), 500
     
-
+# Web
 @dietitian_bp.route('/clients', methods=['POST'])
 def add_client():
     try:
@@ -272,6 +274,7 @@ def add_client():
         return jsonify({'error': str(e)}), 500
     
 
+# Mobile
 # Update only manual changed meal item feedback
 @dietitian_bp.route('/client_feedback', methods=['PATCH']) #Kısmı güncelleme için PATCH
 def give_Feedback():
@@ -315,6 +318,7 @@ def give_Feedback():
         return jsonify({'error': 'Server error'}), 500
     
 
+# Mobile (Çalışıyor) and Web (Eklenecek)
 @dietitian_bp.route('/dropdown_items', methods=['GET'])
 def get_dropdown_available_items():
     try:
@@ -324,7 +328,8 @@ def get_dropdown_available_items():
     except Exception as e:
         print(f"Error in get_available_items: {str(e)}")
         return jsonify({'error': 'Server error'}), 500
-    
+
+# Web    
 @dietitian_bp.route('/clients/<client_id>', methods=['PUT'])
 def update_client(client_id):
     try:
@@ -337,6 +342,7 @@ def update_client(client_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+# Web
 @dietitian_bp.route('/meal-plans', methods=['GET'])
 def get_meal_plans():
     try:
@@ -350,7 +356,8 @@ def get_meal_plans():
         return jsonify(plans), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-    
+
+# Web    
 @dietitian_bp.route('/meal-plans', methods=['POST'])
 def create_meal_plan():
     try:
@@ -367,7 +374,8 @@ def create_meal_plan():
             return jsonify({'error': message}), 400
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-    
+
+# Mobile    
 @dietitian_bp.route('/alternative', methods=['POST'])
 def get_alternative_meal_item():
     """
@@ -414,7 +422,7 @@ def get_alternative_meal_item():
         traceback.print_exc()
         return jsonify({'error': 'Server error'}), 500
     
-
+# Mobile
 # Update only LLM suggested alternative
 @dietitian_bp.route('/update_alternative', methods=['PUT']) #PUT OR PATCH
 def update_mealitem_alternative():

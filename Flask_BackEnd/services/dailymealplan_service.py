@@ -3,6 +3,8 @@ from db_config import db
 from services.meal_service import get_meals_by_clientid_and_date
 from datetime import datetime, date
 
+
+# Mobile
 def get_daily_meal_plan(client_id, plan_date):
     """
     Get daily meal plan details with all meals (works for both current and past dates, General function to pull daily plan)
@@ -63,6 +65,8 @@ def get_daily_meal_plan(client_id, plan_date):
         print(f"Error in get_daily_meal_plan: {str(e)}")
         return None
 
+
+# Mobile
 def get_available_plan_dates(client_id):
     """
     Get all dates that have meal plans for a client (for date picker box we will use this to fill it)
@@ -87,8 +91,6 @@ def get_current_meal_plan(client_id):
     """
     Get today's meal plan for a client (Default when user opens the app)
 
-    Returns:
-        dict: Today's meal plan or None if not found
     """
     today = date.today()
     return get_daily_meal_plan(client_id, today)
