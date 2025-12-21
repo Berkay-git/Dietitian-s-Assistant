@@ -4,23 +4,54 @@ import { useNavigate, useLocation } from 'react-router-dom';
 export default function EditClient() {
   const navigate = useNavigate();
   const location = useLocation();
+    // Get the existing client data passed from ClientDetails
   const client = location.state || {};
 
   const [formData, setFormData] = useState({
-    name: client.name || '',
-    dob: client.dob || '',
-    gender: client.gender || '',
-    medicalReport: client.medicalReport || '',
-    goal: client.goal || '',
+    goal: client.goal || '', // Note: Goal isn't in DB yet, but we keep it in UI
     weight: client.weight || '',
     height: client.height || '',
     bodyfat: client.bodyfat || '',
     activity: client.activity || '',
-    status: client.status || 'Active'
+    //status: client.status || 'Active'
+    medicalReport: client.medicalReport || '',
+    // We keep basic info for display, but usually don't edit name here
+    name: client.name || ''
   });
 
-  const handleSave = () => {
-    navigate('/client-details', { state: formData });
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSave = async () => {
+    setIsLoading(true);
+
+    try {
+      // 1. Send Update to Backend
+      const response = await fetch(`http://localhost:5000/api/dietitian/clients/${client.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          weight: formData.weight,
+          height: formData.height,
+          bodyfat: formData.bodyfat,
+          activity: formData.activity,
+          medicalReport: formData.medicalReport,
+          goal: formData.goal 
+        })
+      });
+
+      if (response.ok) {
+        // 2. SUCCESS: Go back to Details Page
+        // We pass the ID so ClientDetails can fetch the NEW updated data
+        navigate('/client-details', { state: { id: client.id } });
+      } else {
+        alert("Failed to update client.");
+      }
+    } catch (error) {
+      console.error("Update error:", error);
+      alert("Server error.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -43,14 +74,22 @@ export default function EditClient() {
             <input style={styles.input} type="number" value={formData.bodyfat} onChange={e => setFormData({...formData, bodyfat: e.target.value})} />
 
             <label style={styles.label}>Activity Status</label>
-            <input style={styles.input} value={formData.activity} onChange={e => setFormData({...formData, activity: e.target.value})} />
+            <select style={styles.input} value={formData.activity} onChange={e => setFormData({...formData, activity: e.target.value})}>
+               <option value="SEDENTARY">SEDENTARY</option>
+               <option value="LIGHT">LIGHT</option>
+               <option value="MODERATE">MODERATE</option>
+               <option value="HEAVY">HEAVY</option>
+               <option value="ATHELETE">ATHELETE</option>
+            </select>
 
             <label style={styles.label}>Medical Report</label>
             <textarea style={styles.textArea} value={formData.medicalReport} onChange={e => setFormData({...formData, medicalReport: e.target.value})} />
 
             <div style={styles.buttonRow}>
                 <button style={styles.cancelButton} onClick={() => navigate(-1)}>Cancel</button>
-                <button style={styles.saveButton} onClick={handleSave}>Save Changes</button>
+                <button style={styles.saveButton} onClick={handleSave} disabled={isLoading}>
+                   {isLoading ? 'Saving...' : 'Save Changes'}
+                </button>
             </div>
         </div>
       </div>
