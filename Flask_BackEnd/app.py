@@ -13,7 +13,7 @@ print("=" * 50)
 print("🔑 Checking OpenAI API Key...")
 api_key = os.getenv('OPENAI_API_KEY')
 if api_key:
-    print(f"✅ API Key loaded: {api_key[:10]}...{api_key[-4:]}")
+    print(f"✅ API Key loaded")
 else:
     print("❌ API Key NOT found!")
 print("=" * 50)

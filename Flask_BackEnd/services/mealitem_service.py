@@ -2,7 +2,7 @@ from models.models import MealItem, Meal, DailyMealPlan, Item, Client, PhysicalD
 from db_config import db
 from services.item_service import get_item_by_id, calculate_item_calories, calculate_portion_calories
 
-from datetime import date
+from datetime import date, datetime
 
 
 import openai #pip install openai python-dotenv
@@ -505,7 +505,7 @@ def build_dynamic_prompt(client_id, meal_id, item_id):
         
         # 3. Get client's physical details
         physical_details = PhysicalDetails.query.filter_by(ClientID=client_id).order_by(
-            PhysicalDetails.RecordDate.desc()
+            PhysicalDetails.MeasurementDate.desc()
         ).first()
         
         if not physical_details:
@@ -520,10 +520,21 @@ def build_dynamic_prompt(client_id, meal_id, item_id):
         
         # Calculate age and taking into account of the day/month
         today = date.today()
-        age = today.year - client.DOB.year - (
-            (today.month, today.day) < (client.DOB.month, client.DOB.day)
-        )
         
+        if isinstance(client.DOB, str):
+            # If DOB is string, parse it
+            try:
+                dob = datetime.strptime(client.DOB, '%Y-%m-%d').date()
+            except ValueError:
+                try:
+                    dob = datetime.strptime(client.DOB, '%d/%m/%Y').date()
+                except ValueError:
+                    print(f"❌ Invalid DOB format: {client.DOB}")
+                    dob = today  # Fallback
+        else:
+            dob = client.DOB
+        
+        age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
         # 5. Calculate TDEE using the helper function
         tdee = calculate_tdee(
             sex=client.Sex,
@@ -629,15 +640,24 @@ def generate_chatgpt_response(prompt):
     Generate response from ChatGPT using OpenAI API
     """
     try:
-        response = openai.responses.create(
+        response = openai.chat.completions.create(
             model="gpt-4.1-nano",
-            input=prompt,
-            max_output_tokens=300,
+            messages=[
+                {
+                    "role": "system", 
+                    "content": "You are a helpful dietitian assistant. Always respond in valid JSON format."
+                },
+                {
+                    "role": "user", 
+                    "content": prompt
+                }
+            ],
+            max_tokens=300,
             temperature=0.7,
             response_format={"type": "json_object"}  # JSON formatında döndür
         )
         
-        return response.output_text
+        return response.choices[0].message.content
     except Exception as e:
         print(f"Error in generate_chatgpt_response: {e}")
         raise
@@ -668,8 +688,19 @@ def get_alternative_mealitem(client_id, meal_id, item_id):
         
         # Parse JSON response
         try:
-            # response_format={"type": "json_object"} kullandığımız için
-            # markdown code block olmadan direkt JSON gelecek o yüzden ekstra işlem yapmaya gerek yok
+            # Remove markdown code blocks if present
+            cleaned_text = response_text.strip()
+            
+            if cleaned_text.startswith('```'):
+                # Split by newlines and remove first/last lines
+                lines = cleaned_text.split('\n')
+                # Remove first line (```json or ```)
+                lines = lines[1:]
+                # Remove last line if it's ```
+                if lines and lines[-1].strip() == '```':
+                    lines = lines[:-1]
+                cleaned_text = '\n'.join(lines).strip()
+
             llm_response = json.loads(response_text)
             
             # Validate response structure

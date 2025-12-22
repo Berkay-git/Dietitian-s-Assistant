@@ -61,16 +61,7 @@ export default function MealDetailModal({
   }>>({});
 
   const { items: availableItems, loading } = useItems();
-  const { refreshMealPlan } = useMeals(); // MealsContext'ten refresh fonksiyonunu al
-
-  const mockLLMAlternative = {
-    name: "Cottage Cheese",
-    portion: "180g",
-    calories: 120,
-    protein: 18,
-    carb: 6.1,
-    fat: 3,
-  };
+  const { refreshMealPlan } = useMeals();
 
   const getFeedbackStatus = (
     isFollowed: boolean | null | undefined, 
@@ -100,12 +91,12 @@ export default function MealDetailModal({
     return { text: '⏳ Pending', color: '#FF9800' };
   };
 
-  const handleGetAlternative = (item: MealItem) => {
+  const handleGetAlternative = async (item: MealItem) => {
     const currentTry = aiTryCount[item.itemID!] || 0;
-    if (currentTry >= 3) {
+    if (currentTry >= 5) { // 5 deneme hakkı her meal plan için (Yani günlük 5 hak)
       Alert.alert(
         "Limit reached",
-        "You can request AI alternative maximum 3 times."
+        "You can request AI alternative maximum 5 times."
       );
       return;
     }
@@ -124,11 +115,62 @@ export default function MealDetailModal({
     setLlmLoading(true);
     setLlmResult(null);
 
-    // Fake LLM API call delay
-    setTimeout(() => {
-      setLlmResult(mockLLMAlternative);
+    try {
+      // ✅ Backend'e istek gönder
+      const response = await fetch('http://10.0.2.2:5000/api/dietitian/alternative', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          client_id: item.clientID,
+          meal_id: item.mealID,
+          item_id: item.itemID,
+        }),
+      });
+
+      const result = await response.json();
+      console.log('Backend response:', result);
+
+      if (response.ok && result.success) {
+        // ✅ Check status
+        if (result.alternative.status === 'no_alternative') {
+          Alert.alert('No Alternative', 'No suitable alternative found for this item.');
+          setExpandedItemID(null);
+          return;
+        }
+
+        // ✅ Parse recommended_food: "food name - portion - calories - protein - carb - fat"
+        if (result.alternative.status === 'ok' && result.alternative.recommended_food) {
+          const parts = result.alternative.recommended_food.split(' - ');
+          
+          if (parts.length === 6) {
+            // ✅ Mock data formatına çevir
+            const llmAlternative = {
+              name: parts[0].trim(),
+              portion: `${parts[1].trim()}g`,
+              calories: parseInt(parts[2].trim()),
+              protein: parseFloat(parts[3].trim()),
+              carb: parseFloat(parts[4].trim()),
+              fat: parseFloat(parts[5].trim()),
+            };
+            
+            console.log('Parsed alternative:', llmAlternative);
+            setLlmResult(llmAlternative); // Ekrana göster
+          } else {
+            throw new Error('Invalid recommended_food format');
+          }
+        }
+      } else {
+        throw new Error(result.error || 'Failed to get alternative');
+      }
+    } catch (error) {
+      console.error('Error getting alternative:', error);
+      Alert.alert('Error', 'Failed to get AI alternative. Please try again.');
+      setExpandedItemID(null);
+    } finally {
       setLlmLoading(false);
-    }, 1500);
+    }
   };
 
   const handleAcceptAI = (item: MealItem) => {
@@ -151,7 +193,7 @@ export default function MealDetailModal({
     setLlmResult(null);
   };
 
-  const handleRegenerateAI = (item: MealItem) => {
+  const handleRegenerateAI = async (item: MealItem) => {
     const currentTry = aiTryCount[item.itemID!] || 0;
 
     if (currentTry >= 3) {
@@ -170,13 +212,58 @@ export default function MealDetailModal({
     setLlmLoading(true);
     setLlmResult(null);
 
-    setTimeout(() => {
-      setLlmResult({
-        ...mockLLMAlternative,
-        calories: mockLLMAlternative.calories + Math.floor(Math.random() * 30),
+    try {
+      // ✅ Aynı endpoint'i tekrar çağır
+      const response = await fetch('http://10.0.2.2:5000/api/dietitian/alternative', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          client_id: item.clientID,
+          meal_id: item.mealID,
+          item_id: item.itemID,
+        }),
       });
+
+      const result = await response.json();
+      console.log('Regenerate response:', result);
+
+      if (response.ok && result.success) {
+        if (result.alternative.status === 'no_alternative') {
+          Alert.alert('No Alternative', 'No suitable alternative found for this item.');
+          setExpandedItemID(null);
+          return;
+        }
+
+        if (result.alternative.status === 'ok' && result.alternative.recommended_food) {
+          const parts = result.alternative.recommended_food.split(' - ');
+          
+          if (parts.length === 6) {
+            const llmAlternative = {
+              name: parts[0].trim(),
+              portion: `${parts[1].trim()}g`,
+              calories: parseInt(parts[2].trim()),
+              protein: parseFloat(parts[3].trim()),
+              carb: parseFloat(parts[4].trim()),
+              fat: parseFloat(parts[5].trim()),
+            };
+            
+            setLlmResult(llmAlternative);
+          } else {
+            throw new Error('Invalid recommended_food format');
+          }
+        }
+      } else {
+        throw new Error(result.error || 'Failed to regenerate alternative');
+      }
+    } catch (error) {
+      console.error('Error regenerating alternative:', error);
+      Alert.alert('Error', 'Failed to regenerate AI alternative. Please try again.');
+      setExpandedItemID(null);
+    } finally {
       setLlmLoading(false);
-    }, 1200);
+    }
   };
 
   const handleItemFeedbackPress = (item: MealItem) => {
@@ -197,7 +284,6 @@ export default function MealDetailModal({
     }> | null;
   }) => {
     try {
-      // Format changed_item as: "Name - portionG, Name2 - portionG" (Database format)
       let changed_item_string = null;
       
       if (feedback.changedItems && feedback.changedItems.length > 0) {
@@ -236,8 +322,6 @@ export default function MealDetailModal({
         
         setFeedbackModalVisible(false);
         setSelectedFeedbackItem(null);
-        
-        onClose();
       } else {
         console.error('Error response:', result);
         Alert.alert('Error', result.error || 'Failed to save feedback');
@@ -295,7 +379,7 @@ export default function MealDetailModal({
               </View>
             </View>
 
-            {/* General status of meal */}
+            {/* Status */}
             <View style={styles.infoRow}>
               <Text style={styles.label}>Status:</Text>
               <Text style={[styles.value, isCompleted ? styles.completed : styles.pending]}>
@@ -310,7 +394,7 @@ export default function MealDetailModal({
             {items.map((item, index) => {
               const feedbackStatus = getFeedbackStatus(item.isFollowed, item.isLLM, item.changedItem);
               
-              //  Parse changedItem string: "name,portion,calories,protein,carb,fat;name2,..."
+              // ✅ Parse changedItem string: "name,portion,calories,protein,carb,fat;name2,..."
               const changedItems: Array<{
                 name: string;
                 portion: string;
@@ -354,7 +438,7 @@ export default function MealDetailModal({
               
               return (
                 <View key={index} style={styles.itemCard}>
-                  {/*  Eski item (üstü çizili) */}
+                  {/* ✅ Eski item (üstü çizili) */}
                   {hasChangedItem && (
                     <View style={{ opacity: 0.5, marginBottom: 8 }}>
                       <View style={styles.itemHeader}>
@@ -386,7 +470,7 @@ export default function MealDetailModal({
                     </View>
                   )}
 
-                  {/*  Changed new itmes*/}
+                  {/* ✅ Yeni item(lar) */}
                   {hasChangedItem ? (
                     changedItems.map((changedItem, idx) => (
                       <View key={`changed-${idx}`} style={{ marginBottom: idx < changedItems.length - 1 ? 8 : 0 }}>
@@ -429,11 +513,11 @@ export default function MealDetailModal({
                         <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' }}>
                           {acceptedAI ? (
                             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                              <Text style={[styles.itemName, { color: '#E53935', marginRight: 6 }]}>
+                              <Text style={[styles.itemName, { color: '#E53935', marginRight: 6, textDecorationLine: 'line-through' }]}>
                                 {acceptedAI.originalName}
                               </Text>
                               <Text style={[styles.itemName, { color: '#2E7D32' }]}>
-                                {displayedItem.name}
+                                → {displayedItem.name}
                               </Text>
                             </View>
                           ) : (
@@ -459,12 +543,14 @@ export default function MealDetailModal({
                     </>
                   )}
                   
+                  {/* Feedback Badge */}
                   <View style={[styles.feedbackBadge, { backgroundColor: feedbackStatus.color + '20' }]}>
                     <Text style={[styles.feedbackBadgeText, { color: feedbackStatus.color }]}>
                       {feedbackStatus.text}
                     </Text>
                   </View>
 
+                  {/* Action Buttons (only if feedback not given) */}
                   {(item.isFollowed === null || item.isFollowed === undefined) && (
                     <View style={styles.itemActionButtons}>
                       <TouchableOpacity
@@ -485,6 +571,7 @@ export default function MealDetailModal({
                     </View>
                   )}
 
+                  {/* LLM Alternative Result Box */}
                   {expandedItemID === item.itemID && (
                     <View style={styles.llmContainer}>
                       {llmLoading ? (
@@ -512,7 +599,7 @@ export default function MealDetailModal({
                               onPress={() => handleRegenerateAI(item)}
                             >
                               <Text style={styles.itemAlternativeBtnText}>
-                                Generate({3 - (aiTryCount[item.itemID!] || 0)})
+                                Regenerate ({3 - (aiTryCount[item.itemID!] || 0)})
                               </Text>
                             </TouchableOpacity>
                             <TouchableOpacity
@@ -538,6 +625,7 @@ export default function MealDetailModal({
 
             <View style={styles.divider} />
 
+            {/* Feedback Status Section */}
             <Text style={styles.sectionTitle}>Feedback Status</Text>
             {isCompleted ? (
               <Text style={styles.feedbackText}>✓ Feedback is given</Text>
@@ -547,6 +635,7 @@ export default function MealDetailModal({
 
             <View style={styles.divider} />
 
+            {/* Alternative Status Section */}
             <Text style={styles.sectionTitle}>Alternative Status</Text>
             
             {allItemsChangeable ? (
@@ -575,6 +664,7 @@ export default function MealDetailModal({
         </View>
       </View>
 
+      {/* Feedback Modal */}
       {selectedFeedbackItem && (
         <FeedbackModal
           visible={feedbackModalVisible}
