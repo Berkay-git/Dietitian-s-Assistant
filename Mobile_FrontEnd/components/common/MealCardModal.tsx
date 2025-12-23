@@ -91,7 +91,7 @@ export default function MealDetailModal({
     return { text: '⏳ Pending', color: '#FF9800' };
   };
 
-  const handleGetAlternative = async (item: MealItem) => {
+  const handleGetAlternative = async (item: MealItem) => {  //Generate Butonu için fonksiyon 
     const currentTry = aiTryCount[item.itemID!] || 0;
     if (currentTry >= 5) { // 5 deneme hakkı her meal plan için (Yani günlük 5 hak)
       Alert.alert(
@@ -116,7 +116,7 @@ export default function MealDetailModal({
     setLlmResult(null);
 
     try {
-      // ✅ Backend'e istek gönder
+      //  Backend'e istek gönder
       const response = await fetch('http://10.0.2.2:5000/api/dietitian/alternative', {
         method: 'POST',
         headers: {
@@ -133,19 +133,19 @@ export default function MealDetailModal({
       console.log('Backend response:', result);
 
       if (response.ok && result.success) {
-        // ✅ Check status
+        //  Check status
         if (result.alternative.status === 'no_alternative') {
           Alert.alert('No Alternative', 'No suitable alternative found for this item.');
           setExpandedItemID(null);
           return;
         }
 
-        // ✅ Parse recommended_food: "food name - portion - calories - protein - carb - fat"
+        //  Parse recommended_food: "food name - portion - calories - protein - carb - fat"
         if (result.alternative.status === 'ok' && result.alternative.recommended_food) {
           const parts = result.alternative.recommended_food.split(' - ');
           
           if (parts.length === 6) {
-            // ✅ Mock data formatına çevir
+            //  Mock data formatına çevir
             const llmAlternative = {
               name: parts[0].trim(),
               portion: `${parts[1].trim()}g`,
@@ -166,7 +166,7 @@ export default function MealDetailModal({
       }
     } catch (error) {
       console.error('Error getting alternative:', error);
-      Alert.alert('Error', 'Failed to get AI alternative. Please try again.');
+      Alert.alert('Error', 'Failed to get AI alternative.');
       setExpandedItemID(null);
     } finally {
       setLlmLoading(false);
@@ -196,10 +196,10 @@ export default function MealDetailModal({
   const handleRegenerateAI = async (item: MealItem) => {
     const currentTry = aiTryCount[item.itemID!] || 0;
 
-    if (currentTry >= 3) {
+    if (currentTry >= 5) {
       Alert.alert(
         "Limit reached",
-        "You can request AI alternative maximum 3 times."
+        "You can request AI alternative maximum 5 times."
       );
       return;
     }
@@ -213,7 +213,7 @@ export default function MealDetailModal({
     setLlmResult(null);
 
     try {
-      // ✅ Aynı endpoint'i tekrar çağır
+      // Aynı endpoint'i tekrar çağır
       const response = await fetch('http://10.0.2.2:5000/api/dietitian/alternative', {
         method: 'POST',
         headers: {
@@ -322,6 +322,7 @@ export default function MealDetailModal({
         
         setFeedbackModalVisible(false);
         setSelectedFeedbackItem(null);
+        onClose();
       } else {
         console.error('Error response:', result);
         Alert.alert('Error', result.error || 'Failed to save feedback');
@@ -593,13 +594,13 @@ export default function MealDetailModal({
                             <Text>C: {llmResult.carb}g</Text>
                             <Text>F: {llmResult.fat}g</Text>
                           </View>
-                          <View style={{ flexDirection: "row", marginTop: 12, justifyContent: 'space-between', gap: 10 }}>
+                          <View style={{ flexDirection: "row", marginTop: 12, justifyContent: 'space-between', gap: 10 }}> 
                             <TouchableOpacity
                               style={[styles.itemAlternativeBtn, {flex: 1}]}
                               onPress={() => handleRegenerateAI(item)}
                             >
                               <Text style={styles.itemAlternativeBtnText}>
-                                Regenerate ({3 - (aiTryCount[item.itemID!] || 0)})
+                                Regenerate ({5 - (aiTryCount[item.itemID!] || 0)})
                               </Text>
                             </TouchableOpacity>
                             <TouchableOpacity

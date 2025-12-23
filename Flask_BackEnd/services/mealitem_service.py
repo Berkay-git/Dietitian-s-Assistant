@@ -15,23 +15,31 @@ STATIC_ALTERNATIVE_PROMPT = """
 You are a dietitian support assistant.
 The information provided has been prepared by a dietitian.
 
-RULES:
-- Medical restrictions always take precedence.
-- The diet plan cannot be altered.
-- Macronutrients should be maintained as close as possible.
-- Do not perform calculations; base your reasoning on the given values.
-- Do not recommend medical treatment or diagnosis.
+Your task is to suggest the most reasonable food alternative while strictly respecting the dietitian-defined structure.
 
-Only suggest meals within the framework of the RULES.
+RULES:
+- Medical restrictions always take precedence and must never be violated.
+- The overall diet plan structure cannot be altered.
+- Alternatives must stay within a reasonable nutritional tolerance of the original meal.
+- Macronutrients and calories should be kept as close as reasonably possible using the given values.
+- Do not introduce new calculations or assumptions; base decisions on the provided nutritional information only.
+- Do not recommend medical treatment or provide medical diagnosis.
+- If multiple options exist, choose the closest and most appropriate alternative.
+- In the JSON Format never put portion in paranthesis. e.g Cauliflower (130g). It should be Cauliflower rice
+
+GUIDANCE:
+- Minor deviations in macronutrients are acceptable if the alternative is nutritionally equivalent.
+- Prefer food substitutions that fulfill the same dietary role (e.g., protein source to protein source).
+- Avoid rejecting alternatives unless no reasonable equivalent exists.
 
 OUTPUT RULES:
 - The response must be ONLY in valid JSON FORMAT.
-- Do not include any text outside the JSON FORMAT.
-- If no suitable alternative is available, set status to "no_alternative" and set recommended_food to null.
-- If an alternative is found, set status to "ok".
-- Portion should be in grams and number without decimals. 
-- Calories should be rounded to nearest whole number. Protein, carb, and fat should be rounded to one decimal place.
-
+- Do not include any text outside the JSON.
+- If no reasonable alternative exists, set status to "no_alternative" and recommended_food to null.
+- If a reasonable alternative is found, set status to "ok".
+- Portion must be in grams as an integer.
+- Calories must be rounded to the nearest whole number.
+- Protein, carb, and fat must be rounded to one decimal place.
 
 JSON FORMAT:
 {
@@ -40,6 +48,7 @@ JSON FORMAT:
 }
 """
 
+previous_requested_itemList = []
 
 
 def get_mealitems_by_clientid(client_id, plan_date=None):
@@ -653,7 +662,7 @@ def generate_chatgpt_response(prompt):
                 }
             ],
             max_tokens=300,
-            temperature=0.7,
+            temperature=0.7, #0.6 - 0.8.. 0.6 eğer saçmalarsa. 0.8 eğer bulamamaya devam ederse
             response_format={"type": "json_object"}  # JSON formatında döndür
         )
         
@@ -661,6 +670,15 @@ def generate_chatgpt_response(prompt):
     except Exception as e:
         print(f"Error in generate_chatgpt_response: {e}")
         raise
+
+# Mobile LLM
+def extract_food_name(food_string: str) -> str:
+    """
+    Extracting the name from the respone of LLM in "recommended_food"
+    "Cauliflower rice - 100g - 25 calories - ..."
+    -> "cauliflower rice"
+    """
+    return food_string.split(" - ")[0].strip().lower()
 
 def get_alternative_mealitem(client_id, meal_id, item_id):
     """
@@ -719,11 +737,36 @@ def get_alternative_mealitem(client_id, meal_id, item_id):
                 if 'recommended_food' not in llm_response or not llm_response['recommended_food']:
                     return False, "Geçersiz LLM yanıtı (recommended_food eksik)", None
                 
-                print(f"✅ Alternative found: {llm_response['recommended_food']}")
+                # There is no error with status error and invalid recommended food format.
+                # Now we check if the name is exists in the previous suggested food list to make it suggest different type of foods
+                recommended_food = llm_response.get('recommended_food')
+                recommended_name = extract_food_name(recommended_food)
+                previous_food_names = {
+                    extract_food_name(item)
+                    for item in previous_requested_itemList
+                }
+
+                # 🔴 Aynı item tekrar önerildiyse
+                # status no alternative döndür böylece frontendde hata gözüksün
+                if recommended_name in previous_food_names:
+                    print("⚠️ Same item suggested again, no new alternative found")
+                    # DEBUGGING print(f"📋 Previous requested items: {previous_requested_itemList}")
+                    return False, "Yeni bir alternatif bulunamadı", {
+                        'status': 'no_alternative',
+                        'recommended_food': None
+                    }
+
+                # 🟢 Gerçekten yeni alternatifse kaydet
+                previous_requested_itemList.append(recommended_food)
+
+                # Gerçekten yeni alternatif olan yemeği frontende gönder
+                print(f"✅ Alternative found: {recommended_food}")
+                # DEBUGGING print(f"📋 Previous requested items: {previous_requested_itemList}")
                 return True, "Alternatif başarıyla oluşturuldu", {
                     'status': 'ok',
-                    'recommended_food': llm_response['recommended_food']
+                    'recommended_food': recommended_food
                 }
+                
             
             return False, f"Beklenmeyen status değeri: {llm_response['status']}", None
             

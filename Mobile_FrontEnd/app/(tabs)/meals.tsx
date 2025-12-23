@@ -142,6 +142,7 @@ export default function Meals() {
         <MealDetailModal
           visible={modalVisible}
           onClose={handleCloseModal}
+          mealID={selectedMeal.mealID} // Hata olursa sil burayı
           mealName={selectedMeal.mealName}
           timeRange={selectedMeal.timeRange}
           totalCalories={selectedMeal.totalCalories}

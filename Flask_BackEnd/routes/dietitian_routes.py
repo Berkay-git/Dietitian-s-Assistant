@@ -52,7 +52,7 @@ def login():
         ip_address = request.headers.get('X-Forwarded-For', request.remote_addr)
         
         # AuthService ile giriş kontrolü
-        success, message, user, found_user_type = AuthService.login(email, password, ip_address, user_type)
+        success, message, user, found_user_type = AuthService.login(email, password, ip_address, user_type) #mobil tarafı isActive'e bakmıyor. Ona göre dietitian onu reactive yapması lazım
         
         print(f"Login sonucu - Success: {success}, Message: {message}, User Type: {found_user_type}")
 
@@ -178,7 +178,7 @@ def register():
             return jsonify({
                 'message': message,
                 'dietitian': new_dietitian.to_dict() # This uses the method we added to_dict, in authService
-            }), 201
+            }), 200
         else:
             return jsonify({'error': message}), 400
             
@@ -268,7 +268,7 @@ def add_client():
             return jsonify({
                 'message': message,
                 'client': client.to_dict()
-            }), 201
+            }), 200
         else:
             return jsonify({'error': message}), 400
 
@@ -370,7 +370,7 @@ def api_create_meal_plan():  # <--- RENAMED THIS to avoid conflict
         success, message = create_meal_plan(data)
         
         if success:
-            return jsonify({'message': message}), 201
+            return jsonify({'message': message}), 200
         else:
             return jsonify({'error': message}), 400
     except Exception as e:

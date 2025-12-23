@@ -18,7 +18,7 @@ def create_client(dietitian_id, data):
 
         # 3. Hash the password (using your existing AuthService helper)
         hashed_password = AuthService.hash_password(data['password'])
-
+        hashed_email = AuthService.hash_email(data['email'])
         # 4. Generate Client UUID
         new_client_id = str(uuid.uuid4())
 
@@ -26,7 +26,7 @@ def create_client(dietitian_id, data):
         new_client = Client(
             ClientID=new_client_id,
             Name=data['name'],
-            Email=data['email'],
+            Email=hashed_email,
             Password=hashed_password,
             DOB=data['dob'],
             Sex=data['gender'],
