@@ -3,7 +3,7 @@ from db_config import db
 from services.item_service import get_item_by_id, calculate_item_calories, calculate_portion_calories
 
 from datetime import date, datetime
-
+import traceback
 
 import openai #pip install openai python-dotenv
 import os
@@ -25,7 +25,7 @@ RULES:
 - Do not introduce new calculations or assumptions; base decisions on the provided nutritional information only.
 - Do not recommend medical treatment or provide medical diagnosis.
 - If multiple options exist, choose the closest and most appropriate alternative.
-- In the JSON Format never put portion in paranthesis. e.g Cauliflower (130g). It should be Cauliflower rice
+- In the JSON Format never put portion in paranthesis. e.g Cauliflower (130g). It should be Cauliflower rice.
 
 GUIDANCE:
 - Minor deviations in macronutrients are acceptable if the alternative is nutritionally equivalent.
@@ -40,6 +40,35 @@ OUTPUT RULES:
 - Portion must be in grams as an integer.
 - Calories must be rounded to the nearest whole number.
 - Protein, carb, and fat must be rounded to one decimal place.
+
+FOOD NAME NORMALIZATION RULES:
+- The food name part of "recommended_food" must be treated as a strict identifier, not free text.
+- The food name must be a single, normalized string.
+- The food name must be written in Title Case (first letter of each word capitalized).
+- Do NOT include portion size, units, numbers, preparation methods, fat level, brand names, or descriptors in the food name.
+- Do NOT include parentheses, commas, hyphens, or additional explanations in the food name.
+- The food name must contain only letters and spaces.
+
+FOOD NAME FORMAT EXAMPLES:
+
+INVALID:
+- Cottage cheese
+- cottage Cheese
+- Cottage Cheese (100g)
+- Low Fat Cottage Cheese
+- Cottage cheese - 100g
+
+VALID:
+- Cottage Cheese
+
+STRING FORMAT RULE:
+- The "recommended_food" string must strictly follow this exact pattern:
+  "Food Name - Portion - Calories - Protein - Carb - Fat"
+- Use exactly one space before and after each hyphen.
+
+FINAL CHECK RULE:
+- Before returning the final JSON, internally verify that the food name follows all normalization rules.
+- If the food name violates any rule, normalize it before outputting the JSON.
 
 JSON FORMAT:
 {
@@ -343,10 +372,10 @@ def give_feedback_on_mealitem_via_LLM(client_id, meal_id, item_id, accepted_item
             return False, "Meal item not found"
         
         # Validate the accepted_item_json structure
-        if not accepted_item_json or 'recommended_food' not in accepted_item_json:
+        if not accepted_item_json:
             return False, "Invalid alternative item format"
         
-        recommended_food = accepted_item_json['recommended_food']
+        recommended_food = accepted_item_json  #['recommended_food'] olmaması lazım kaldırıldı! Çünkü recommended food listesinde başka bir recommended food objesi arıyordu.
         
         # Validate recommended_food has required fields
         if not recommended_food or 'name' not in recommended_food or 'portion' not in recommended_food:
@@ -356,7 +385,7 @@ def give_feedback_on_mealitem_via_LLM(client_id, meal_id, item_id, accepted_item
         changed_item_text = f"{recommended_food.get('name', 'Unknown')} - {recommended_food.get('portion', 'Unknown portion')}"
         
         # Update for LLM suggestion
-        meal_item.ChangedItem = changed_item_text
+        meal_item.ChangedItem = changed_item_text   #+ "g"  #Sonuna Gram ekle
         meal_item.isFollowed = 0  # Always 0 for LLM changes
         meal_item.isLLM = 1  # Always 1 for LLM suggestions
         
@@ -368,7 +397,6 @@ def give_feedback_on_mealitem_via_LLM(client_id, meal_id, item_id, accepted_item
     except Exception as e:
         db.session.rollback()
         print(f"Error in give_feedback_on_mealitem_via_LLM: {str(e)}")
-        import traceback
         traceback.print_exc()
         return False, f"Server error: {str(e)}"
 
@@ -591,8 +619,13 @@ def build_dynamic_prompt(client_id, meal_id, item_id):
             plan_goal = "Weight gain"
         else:
             plan_goal = "Weight maintenance"
+
+        # 8. Filter the items in the DB between 5-15 (RETRIEVAL AUGMENTED GENERATION PROMPTING) and provide to LLM
+
+        # 9. Get the Location of the User
+
         
-        # 8. Build the dynamic prompt
+        # 10. Build the dynamic prompt
         dynamic_prompt = f"""
 Plan Goal:
 Person is working on {plan_goal}
@@ -613,7 +646,6 @@ Suggest the most suitable single meal and its portion based on this information.
         
     except Exception as e:
         print(f"Error in build_dynamic_prompt: {str(e)}")
-        import traceback
         traceback.print_exc()
         return None
 

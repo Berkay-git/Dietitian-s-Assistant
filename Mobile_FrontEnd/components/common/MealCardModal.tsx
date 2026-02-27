@@ -76,7 +76,7 @@ export default function MealDetailModal({
       return { text: '✓ Followed', color: '#4CAF50' };
     }
     
-    else if (isFollowed === false && changedItem != null  && isLLM === true) {  // && canChange === true bu vardı kaldırdık hatalı cevap verdi
+    else if (isFollowed === false   && isLLM === true) {
       return { text: '⚠️ Modified with AI', color: '#FF5722' };
     }
     
@@ -173,20 +173,63 @@ export default function MealDetailModal({
     }
   };
 
-  const handleAcceptAI = (item: MealItem) => {
-    if (!llmResult) return;
+  const handleAcceptAI = async (item: MealItem) => {
+  if (!llmResult) return;
 
-    setAcceptedAIItems(prev => ({
-      ...prev,
-      [item.itemID!]: {
-        originalName: item.name,
-        aiItem: llmResult,
+  try {
+    // Backend'e kabul edilen LLM önerisini gönder
+    const response = await fetch('http://10.0.2.2:5000/api/dietitian/update_alternative', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
       },
-    }));
+      body: JSON.stringify({
+        client_id: item.clientID,
+        meal_id: item.mealID,
+        item_id: item.itemID,
+        recommended_food: {
+          name: llmResult.name,
+          portion: parseFloat(llmResult.portion.replace('g', '')), // "100g" -> 100
+          calories: llmResult.calories,
+          protein: llmResult.protein,
+          carb: llmResult.carb,
+          fat: llmResult.fat,
+        }
+      }),
+    });
 
-    setExpandedItemID(null);
-    setLlmResult(null);
-  };
+    const result = await response.json();
+
+    if (response.ok && result.success) {
+      console.log('Alternative accepted successfully:', result);
+
+      // UI'da kabul edilmiş olarak göster
+      setAcceptedAIItems(prev => ({
+        ...prev,
+        [item.itemID!]: {
+          originalName: item.name,
+          aiItem: llmResult,
+        },
+      }));
+
+      // Meal plan'ı yeniden yükle
+      await refreshMealPlan();
+
+      // Başarılı feedback mesajı göster
+      Alert.alert('Success', 'Feedback saved successfully!');
+
+      // Modal'ı kapat
+      setExpandedItemID(null);
+      setLlmResult(null);
+      onClose();
+    } else {
+      throw new Error(result.error || 'Failed to accept alternative');
+    }
+  } catch (error) {
+    console.error('Error accepting AI alternative:', error);
+    Alert.alert('Error', 'Failed to save AI alternative. Please try again.');
+  }
+};
 
   const handleCancelAI = () => {
     setExpandedItemID(null);
@@ -395,7 +438,7 @@ export default function MealDetailModal({
             {items.map((item, index) => {
               const feedbackStatus = getFeedbackStatus(item.isFollowed, item.isLLM, item.changedItem);
               
-              // ✅ Parse changedItem string: "name,portion,calories,protein,carb,fat;name2,..."
+              // Parse changedItem string: "name,portion,calories,protein,carb,fat;name2,..."
               const changedItems: Array<{
                 name: string;
                 portion: string;
@@ -436,10 +479,9 @@ export default function MealDetailModal({
                     fat: acceptedAI.aiItem.fat,
                   }
                 : item;
-              
               return (
                 <View key={index} style={styles.itemCard}>
-                  {/* ✅ Eski item (üstü çizili) */}
+                  {/* Eski item (üstü çizili) */}
                   {hasChangedItem && (
                     <View style={{ opacity: 0.5, marginBottom: 8 }}>
                       <View style={styles.itemHeader}>
@@ -471,7 +513,7 @@ export default function MealDetailModal({
                     </View>
                   )}
 
-                  {/* ✅ Yeni item(lar) */}
+                  {/* Yeni item(lar) */}
                   {hasChangedItem ? (
                     changedItems.map((changedItem, idx) => (
                       <View key={`changed-${idx}`} style={{ marginBottom: idx < changedItems.length - 1 ? 8 : 0 }}>

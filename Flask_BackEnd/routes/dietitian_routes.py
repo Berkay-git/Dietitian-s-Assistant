@@ -418,7 +418,6 @@ def get_alternative_meal_item():
             
     except Exception as e:
         print(f"Error in get_alternative_meal_item route: {str(e)}")
-        import traceback
         traceback.print_exc()
         return jsonify({'error': 'Server error'}), 500
     
@@ -434,13 +433,13 @@ def update_mealitem_alternative():
         data = request.get_json()
         
         # Validate required fields
-        if not data or not all(k in data for k in ('client_id', 'meal_id', 'item_id', 'alternative_meal')):
-            return jsonify({'error': 'client_id, meal_id, item_id ve accepted_item_id hatalı veya eksik'}), 400
+        if not data or not all(k in data for k in ('client_id', 'meal_id', 'item_id', 'recommended_food')):
+            return jsonify({'error': 'client_id, meal_id, item_id ve recommended_food hatalı veya eksik'}), 400
         
         client_id = data['client_id']
         meal_id = data['meal_id']
         item_id = data['item_id']
-        accepted_item_json = data['alternative_meal']
+        accepted_item_json = data['recommended_food']
         
         # Call the service method
         success, message = give_feedback_on_mealitem_via_LLM(
