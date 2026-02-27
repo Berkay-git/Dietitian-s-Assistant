@@ -203,25 +203,21 @@ export default function MealDetailModal({
     if (response.ok && result.success) {
       console.log('Alternative accepted successfully:', result);
 
-      // UI'da kabul edilmiş olarak göster
-      setAcceptedAIItems(prev => ({
-        ...prev,
-        [item.itemID!]: {
-          originalName: item.name,
-          aiItem: llmResult,
-        },
-      }));
-
-      // Meal plan'ı yeniden yükle
-      await refreshMealPlan();
-
-      // Başarılı feedback mesajı göster
-      Alert.alert('Success', 'Feedback saved successfully!');
-
-      // Modal'ı kapat
+      // State'leri temizle
       setExpandedItemID(null);
       setLlmResult(null);
-      onClose();
+
+      // Meal plan'ı yenile
+      await refreshMealPlan();
+
+      // Başarı mesajı
+      Alert.alert('Success', 'AI alternative accepted!');
+      
+      // Kısa gecikme sonrası modal'ı kapat
+      setTimeout(() => {
+        onClose();
+      }, 500);
+
     } else {
       throw new Error(result.error || 'Failed to accept alternative');
     }
