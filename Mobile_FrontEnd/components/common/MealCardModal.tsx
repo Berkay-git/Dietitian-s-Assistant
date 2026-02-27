@@ -76,7 +76,7 @@ export default function MealDetailModal({
       return { text: '✓ Followed', color: '#4CAF50' };
     }
     
-    else if (isFollowed === false && canChange && changedItem != null  && isLLM === true) {
+    else if (isFollowed === false && changedItem != null  && isLLM === true) {  // && canChange === true bu vardı kaldırdık hatalı cevap verdi
       return { text: '⚠️ Modified with AI', color: '#FF5722' };
     }
     

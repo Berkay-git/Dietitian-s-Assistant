@@ -23,6 +23,20 @@ export default function MealCard({
   isCompleted = false,
   onPress,
 }: MealCardProps) {
+
+  const formatTime = (range: string) => {
+    if (!range) return "";
+
+    if (range.includes("-")) {
+      const [startRaw, endRaw] = range.split("-").map(s => s.trim());
+      const start = startRaw.slice(0, 5);
+      const end = (endRaw ?? "").slice(0, 5);
+      return `${start} - ${end}`;
+    }
+
+    return range.slice(0, 5);
+  };
+
   return (
     <TouchableOpacity 
       style={styles.card}
@@ -32,7 +46,7 @@ export default function MealCard({
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.mealTitle}>
-          {mealType} ({timeRange})
+          {mealType} ({formatTime(timeRange)})
         </Text>
         <View style={styles.caloriesBox}>
           <Text style={styles.caloriesText}>{totalCalories}</Text>
