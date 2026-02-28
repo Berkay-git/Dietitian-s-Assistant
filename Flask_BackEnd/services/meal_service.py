@@ -120,6 +120,40 @@ def get_client_meal_plans(client_id):
                     actual_cals = base_cals * ratio
                     meal_cals += actual_cals
 
+#--------------------------------------------------------------------
+                    # --- NEW CODE: Calculate Macros for ChangedItem SPECIFICALLY FOR WEB SIDE, MOBILE SIDE WILL NOT USE IT.---
+                    new_kcal, new_pro, new_carb, new_fat = None, None, None, None
+
+                    if mi.ChangedItem:
+                        # 1. Clean the string (remove quotes and extra spaces)
+                        clean_changed = str(mi.ChangedItem).replace('"', '').strip()
+                        
+                        # 2. Split into name and amount
+                        if '-' in clean_changed:
+                            parts = clean_changed.split('-')
+                            if len(parts) == 2:
+                                new_item_name = parts[0].strip()
+                                
+                                try:
+                                    new_item_amount = float(parts[1].strip())
+                                    
+                                    # 3. Look up the new item in the database 
+                                    # (Using ilike for case-insensitive matching)
+                                    new_db_item = Item.query.filter(Item.ItemName.ilike(new_item_name)).first()
+                                    
+                                    if new_db_item:
+                                        new_ratio = new_item_amount / 100.0
+                                        
+                                        # 4. Calculate macros for the new amount
+                                        new_pro = round((new_db_item.ItemProtein or 0) * new_ratio)
+                                        new_carb = round((new_db_item.ItemCarb or 0) * new_ratio)
+                                        new_fat = round((new_db_item.ItemFat or 0) * new_ratio)
+                                        
+                                        new_kcal = round((4 * new_pro) + (4 * new_carb) + (9 * new_fat))
+                                except Exception as e:
+                                    print(f"Error parsing modified item amount: {e}")
+#------------------------------------------
+
                     items_data.append({
                         'name': item.ItemName,
                         'amount': mi.ConsumeAmount,
@@ -127,7 +161,13 @@ def get_client_meal_plans(client_id):
                         'protein': round((item.ItemProtein or 0) * ratio),
                         'carbs': round((item.ItemCarb or 0) * ratio),
                         'fat': round((item.ItemFat or 0) * ratio),
-                        'allowChange': mi.canChange
+                        'allowChange': mi.canChange,
+                        'changedItem': mi.ChangedItem,  # ----- ADDED THIS FOR GIVING FEEDBACK TO DIETITIAN ON WEB
+                        'isLLM': mi.isLLM,               # ----- ADDED THIS FOR GIVING FEEDBACK TO DIETITIAN ON WEB
+                        'newKcal': new_kcal,    # ----- SOME ADDITONAL FIELDS FOR WEB
+                        'newProtein': new_pro,  # ----- SOME ADDITONAL FIELDS FOR WEB
+                        'newCarbs': new_carb,   # ----- SOME ADDITONAL FIELDS FOR WEB
+                        'newFat': new_fat       # ----- SOME ADDITONAL FIELDS FOR WEB
                     })
 
                 daily_total_cals += meal_cals

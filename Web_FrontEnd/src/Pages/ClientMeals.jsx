@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-// --- HELPER: TIME SORTER ---
+// --- HELPER: Sorts Rime ---
 const getMinutesFromTime = (timeStr) => {
   if (!timeStr || timeStr === "Flexible") return 9999; 
   try {
@@ -11,6 +11,27 @@ const getMinutesFromTime = (timeStr) => {
   } catch (e) {
     return 9999;
   }
+};
+
+// --- HELPER: Format the text such that it prints ex: 100g Honey when viewing client meal on web.
+const formatChangedItemText = (rawText) => {
+  if (!rawText) return '';
+  
+  // delete quotes (if any)
+  let cleanText = rawText.replace(/"/g, '').trim(); 
+
+  // split and rearrange
+  if (cleanText.includes('-')) {
+    const parts = cleanText.split('-');
+    const itemName = parts[0].trim();
+    const itemAmount = parts[1].trim();
+    
+    // final rearrangement
+    return `${itemAmount}g ${itemName}`;
+  }
+  
+  // if no "-" directly return
+  return cleanText;
 };
 
 export default function ClientMeals() {
@@ -120,9 +141,86 @@ export default function ClientMeals() {
                                   </span>
                               </div>
                               <ul style={{margin:'0', paddingLeft:'20px', color:'#555', fontSize:'0.9em'}}>
-                                {meal.items.map((item, i) => (
-                                    <li key={i}>{item.amount}g {item.name} <span style={{color:'#999', fontSize:'0.8em'}}>({item.calories} kcal)</span></li>
-                                ))}
+                                {meal.items.map((item, i) => {
+                                  // Catch both upper and lower case versions
+                                  const changedText = item.ChangedItem || item.changedItem;
+                                  const isLLMFlag = item.isLLM !== undefined ? item.isLLM : item.IsLLM; 
+
+                                  const isModified = changedText && changedText.trim() !== '';
+                                  
+                                  if (isModified) {
+                                    const isModifiedByLLM = isLLMFlag === 1 || isLLMFlag === true; 
+                                    const strikeColor = isModifiedByLLM ? 'rgb(255, 91, 21)' : 'purple';
+                                    const modifierLabel = isModifiedByLLM ? '(LLM)' : '(User)';
+
+                                    const formattedNewItem = formatChangedItemText(changedText); // rearranges ur text so that it shows "Ex: 100g Honey"
+
+                                    return (
+                                      <li key={i} style={{ marginBottom: '8px' }}>
+                                        {/* Original Item is here crossed. */}
+                                        <div style={{ color: strikeColor }}>
+                                          {/* cross main text */}
+                                          <span style={{ textDecoration: 'line-through' }}>
+                                            {item.amount}g {item.name}
+                                          </span>
+                                          {' '}
+                                          {/* specifically cross kcal because it was misbewhaving */}
+                                          <span style={{ opacity: 0.7, fontSize: '0.8em', textDecoration: 'line-through' }}>
+                                            ({item.calories} kcal)
+                                          </span>
+                                        </div>
+
+                                        {/* New Modified Item */}
+                                        <div style={{ color: '#333', fontWeight: '500', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                          <span>↳ {formattedNewItem}</span>
+
+                                          {/* The Modifier Label (Just one this time!) */}
+                                          <span style={{ fontSize: '0.8em', color: strikeColor, fontWeight: 'bold' }}>{modifierLabel}</span>
+
+                                          {/* The Instant Tooltip Wrapper */}
+                                          <div className="instant-tooltip-container">
+                                            {/* The (i) Icon */}
+                                            <span
+                                              style={{
+                                                color: '#888',
+                                                border: '1px solid #ccc',
+                                                borderRadius: '50%',
+                                                width: '16px',
+                                                height: '16px',
+                                                display: 'inline-flex',
+                                                justifyContent: 'center',
+                                                alignItems: 'center',
+                                                fontSize: '10px',
+                                                fontWeight: 'bold',
+                                                backgroundColor: '#f9f9f9'
+                                              }}
+                                            >
+                                              i
+                                            </span>
+
+                                            {/* The Hidden Instant Box */}
+                                            <div className="instant-tooltip-box">
+                                              <div style={{ fontWeight: 'bold', borderBottom: '1px solid #555', paddingBottom: '3px', marginBottom: '3px' }}>
+                                                Estimated Macros
+                                              </div>
+                                              <div>kcal: {item.newKcal ?? '0'}</div>
+                                              <div>protein: {item.newProtein ?? '0'}g</div>
+                                              <div>carbs: {item.newCarbs ?? '0'}g</div>
+                                              <div>fat: {item.newFat ?? '0'}g</div>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </li>
+                                    );
+                                  }
+
+                                  // Normal Item (Not modified)
+                                  return (
+                                    <li key={i} style={{ marginBottom: '4px' }}>
+                                      {item.amount}g {item.name} <span style={{ color: '#999', fontSize: '0.8em' }}>({item.calories} kcal)</span>
+                                    </li>
+                                  );
+                                })}
                               </ul>
                             </div>
                           ))}

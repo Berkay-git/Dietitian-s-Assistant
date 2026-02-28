@@ -56,3 +56,49 @@ button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
 }
+
+
+/* INSTANT TOOLTIP STYLES */
+.instant-tooltip-container {
+  position: relative;
+  display: inline-flex;
+  cursor: help;
+}
+
+.instant-tooltip-box {
+  visibility: hidden;
+  opacity: 0;
+  background-color: #2c3e50; /* Dark, sleek background */
+  color: #fff;
+  text-align: left;
+  border-radius: 6px;
+  padding: 8px 12px;
+  position: absolute;
+  z-index: 1000;
+  bottom: 130%; /* Pushes it above the (i) icon */
+  left: 50%;
+  transform: translateX(-50%); /* Centers it horizontally */
+  white-space: nowrap; /* Keeps the box wide enough for the text */
+  font-size: 12px;
+  font-weight: normal;
+  box-shadow: 0px 4px 8px rgba(0,0,0,0.2);
+  pointer-events: none; /* Prevents the tooltip itself from interfering with mouse movement */
+}
+
+/* The Magic: Instantly show the box when hovering the container */
+.instant-tooltip-container:hover .instant-tooltip-box {
+  visibility: visible;
+  opacity: 1;
+}
+
+/* Optional: Adds a tiny little triangle pointing down */
+.instant-tooltip-box::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: #2c3e50 transparent transparent transparent;
+}
