@@ -168,6 +168,10 @@ function ClientInfoBanner({ client, selectedDate, setSelectedDate, durationDays,
         <label style={{display:'block', fontSize:'0.8em', marginBottom:'4px', color:'#666'}}>Plan Duration (days):</label>
         <select value={durationDays} onChange={(e) => setDurationDays(Number(e.target.value))} style={{padding:'6px', border:'1px solid #999', borderRadius:'4px', width:'100%'}}>
           <option value={1}>1</option>
+          <option value={2}>2</option>
+          <option value={3}>3</option>
+          <option value={4}>4</option>
+          <option value={5}>5</option>
           <option value={7}>7</option>
           <option value={14}>14</option>
           <option value={30}>30</option>
@@ -395,7 +399,8 @@ export default function MealPlanner() {
     const payload = {
         client_id: clientData.id,
         date: selectedDate,
-        meals: meals
+        meals: meals,
+        durationDays: planToEdit ? 1 : durationDays //for creating meal plans according to plan duration. If we are in edit mode, take duration as 1. Else take actual duration.
     };
 
     try {

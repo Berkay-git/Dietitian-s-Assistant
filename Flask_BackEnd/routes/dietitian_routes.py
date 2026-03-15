@@ -360,19 +360,35 @@ def api_get_meal_plans():
 
 # Web    
 @dietitian_bp.route('/meal-plans', methods=['POST'])
-def api_create_meal_plan():  # <--- RENAMED THIS to avoid conflict
+def api_create_meal_plan():  # <-- renamed to avoid conflict.
     try:
         data = request.get_json()
         if not data.get('client_id') or not data.get('date'):
             return jsonify({'error': 'Client ID and Date are required'}), 400
 
-        # Now we call the function from the imported module variable
-        success, message = create_meal_plan(data)
         
-        if success:
-            return jsonify({'message': message}), 200
-        else:
-            return jsonify({'error': message}), 400
+        duration_days = int(data.get('durationDays', 1))  # as default takes duration_days as 1.
+        base_date_str = data.get('date')
+        print(duration_days)
+
+        base_date = datetime.strptime(base_date_str, '%Y-%m-%d')
+
+        for i in range(duration_days): # loop for duration days and create that number of meals.
+            current_date = base_date + timedelta(days=i) # Calculate the new date for this specific loop
+            
+            daily_data = data.copy() # fresh copy
+
+            daily_data['date'] = current_date.strftime('%Y-%m-%d') # format the date
+
+            success, message = create_meal_plan(daily_data) # create meal plan for this specific day
+            
+            # If any day fails then stop and return the error to the frontend
+            if not success:
+                return jsonify({'error': f"Failed on date {daily_data['date']}: {message}"}), 400
+        
+        # If the loop finishes without failing, return a single success message
+        return jsonify({'message': f'Successfully created meal plans for {duration_days} days.'}), 200
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
