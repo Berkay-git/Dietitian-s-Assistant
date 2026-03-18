@@ -14,6 +14,7 @@ from models.models import Client, PhysicalDetails, MedicalDetails
 from services.client_service import *
 from services.mealitem_service import *
 from services.meal_service import *
+from services.physical_details_service import get_progress_data
 import services.client_service as client_service# web için, böyle importlamak lazim yoksa çalışmıyor.
 import services.meal_service as meal_service# web için, böyle importlamayınca çalışmıyor. (from ... import *) olmuyor.
 
@@ -504,7 +505,30 @@ def reactivate_client(client_id):
         return jsonify({'error': str(e)}), 500
     
 
-# to get items from database and use them when addin a meal to client.    
+# Mobile (Progress)
+@dietitian_bp.route('/progress-data', methods=['GET'])
+def get_client_progress_data():
+    try:
+        client_id = request.args.get('client_id')
+        metric = request.args.get('metric')
+        duration = request.args.get('duration')
+
+        if not all([client_id, metric, duration]):
+            return jsonify({'error': 'client_id, metric and duration are required'}), 400
+
+        success, message, data = get_progress_data(client_id, metric, duration)
+
+        if success:
+            return jsonify({'success': True, 'data': data}), 200
+        else:
+            return jsonify({'success': False, 'error': message}), 400
+
+    except Exception as e:
+        print(f"Error in get_client_progress_data: {str(e)}")
+        return jsonify({'error': 'Server error'}), 500
+
+
+# to get items from database and use them when addin a meal to client.
 @dietitian_bp.route('/items', methods=['GET'])
 def get_available_items():
     try:

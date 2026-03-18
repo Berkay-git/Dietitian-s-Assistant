@@ -6,6 +6,8 @@ from db_config import db
 import datetime
 import uuid
 
+# pip install cryptography
+
 class AuthService:
     
     #/////////////////////////////////

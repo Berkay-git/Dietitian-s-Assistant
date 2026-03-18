@@ -7,6 +7,7 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { MealsProvider } from "@/context/MealsContext";
 import { ItemProvider } from "@/context/ItemContext";
+import { ChartProvider } from "@/context/ChartContext";
 
 function AuthGate() {
   const { isAuthenticated } = useAuth();
@@ -31,12 +32,14 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <MealsProvider>
+        <ChartProvider>
         <ItemProvider>
           <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
             <AuthGate />
             <StatusBar style="auto" />
           </ThemeProvider>
         </ItemProvider>
+        </ChartProvider>
       </MealsProvider>
     </AuthProvider>
   );

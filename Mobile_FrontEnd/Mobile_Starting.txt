@@ -1,0 +1,4 @@
+Projeyi klonladığında tsconfig.json dosyasında hata alıyorsan:
+
+1) sadece "Mobile_FrontEnd" için terminal aç ve oraya npm install at
+2) npm install sonrası hala hata alıyorsan tsconfig.json dosyasının içeriğini kopyala-sil-yapıştır yap çalışacaktır.
