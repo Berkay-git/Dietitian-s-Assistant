@@ -63,26 +63,26 @@ function AddMealModal({ isOpen, onClose, onAdd }) {
         const data = await response.json();
 
         if (response.ok) {
-          // 3. MAP: Convert Backend Keys (ItemName) -> Frontend Keys (name)
-          // This ensures your UI doesn't break!
-          const mappedItems = data.map(item => ({
-            id: item.ItemID,
-            name: item.ItemName,
-            calories: item.ItemCalories,
-            protein: item.ItemProtein,
-            carbs: item.ItemCarb,
-            fat: item.ItemFat,
-            amount: 100,     // Default value for UI
-            unit: 'g'        // Default unit
-          }));
-          
+          // b plan which calculates calories
+          const mappedItems = data.map(item => {
+            const calculatedCalories = (item.ItemProtein * 4) + (item.ItemCarb * 4) + (item.ItemFat * 9);
+            return {
+              id: item.ItemID,
+              name: item.ItemName,
+              calories: item.ItemCalories || Math.round(calculatedCalories), 
+              protein: item.ItemProtein,
+              carbs: item.ItemCarb,
+              fat: item.ItemFat,
+              amount: 100,
+              unit: 'g'
+            };
+          });
           setDbItems(mappedItems);
         }
       } catch (error) {
         console.error("Error fetching items:", error);
       }
     };
-
     fetchItems();
   }, []);
 
@@ -130,6 +130,70 @@ function AddMealModal({ isOpen, onClose, onAdd }) {
         <div style={{display: 'flex', gap: '10px', marginTop: '10px'}}>
           <button onClick={handleSave} disabled={!selectedFood} style={{flex: 1, padding: '10px', cursor: 'pointer', backgroundColor: selectedFood ? '#4CAF50' : '#ccc', color: 'white', border: 'none', borderRadius: '4px'}}>Add to Meal</button>
           <button onClick={onClose} style={{flex: 1, padding: '10px', cursor: 'pointer', backgroundColor: '#f44336', color: 'white', border: 'none', borderRadius: '4px'}}>Cancel</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// popup
+function AddNewMealModal({ isOpen, onClose, onAdd }) {
+  const [mealName, setMealName] = useState('Snack');
+  const [startTime, setStartTime] = useState('15:00');
+  const [endTime, setEndTime] = useState('16:00');
+
+  if (!isOpen) return null;
+
+  const handleSave = () => {
+    onAdd(mealName, `${startTime} - ${endTime}`);
+    setMealName('Snack');
+    setStartTime('15:00');
+    setEndTime('16:00');
+    onClose();
+  };
+
+  const styles = {
+    overlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000 },
+    modal: { backgroundColor: 'white', padding: '25px', borderRadius: '12px', width: '320px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column', gap: '15px', fontFamily: "'Inter', sans-serif" },
+    title: { margin: 0, fontSize: '18px', color: '#333', textAlign: 'center', borderBottom: '1px solid #eee', paddingBottom: '10px' },
+    label: { fontSize: '13px', fontWeight: 'bold', color: '#555', marginBottom: '5px', display: 'block' },
+    select: { width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #ccc', fontSize: '15px', outline: 'none', backgroundColor: '#f9f9f9' },
+    timeRow: { display: 'flex', gap: '15px', justifyContent: 'space-between' },
+    timeInput: { width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid #ccc', outline: 'none', backgroundColor: '#f9f9f9' },
+    btnRow: { display: 'flex', gap: '10px', marginTop: '10px' },
+    saveBtn: { flex: 1, padding: '10px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', transition: '0.2s' },
+    cancelBtn: { flex: 1, padding: '10px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', transition: '0.2s' }
+  };
+
+  return (
+    <div style={styles.overlay}>
+      <div style={styles.modal}>
+        <h3 style={styles.title}>🍱 Add New Meal</h3>
+
+        <div>
+          <label style={styles.label}>Meal Type</label>
+          <select style={styles.select} value={mealName} onChange={(e) => setMealName(e.target.value)}>
+            <option value="Breakfast">Breakfast</option>
+            <option value="Lunch">Lunch</option>
+            <option value="Dinner">Dinner</option>
+            <option value="Snack">Snack</option>
+          </select>
+        </div>
+
+        <div style={styles.timeRow}>
+          <div style={{ flex: 1 }}>
+            <label style={styles.label}>Start Time</label>
+            <input type="time" style={styles.timeInput} value={startTime} onChange={e => setStartTime(e.target.value)} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={styles.label}>End Time</label>
+            <input type="time" style={styles.timeInput} value={endTime} onChange={e => setEndTime(e.target.value)} />
+          </div>
+        </div>
+
+        <div style={styles.btnRow}>
+          <button style={styles.saveBtn} onClick={handleSave}>Add Meal</button>
+          <button style={styles.cancelBtn} onClick={onClose}>Cancel</button>
         </div>
       </div>
     </div>
@@ -194,7 +258,6 @@ function MealCard({ meal, onOpenAddModal, onDeleteItem, onToggleItem, onEditMeal
 
   const [isEditing, setIsEditing] = useState(false);
   
-  // FIX: Handle parsing DB time "08:00:00" -> "08:00" or Input "08:00"
   const splitTime = (meal.time || "").split('-').map(t => t.trim().substring(0, 5)); 
   
   const [titleDraft, setTitleDraft] = useState(meal.title);
@@ -236,7 +299,7 @@ function MealCard({ meal, onOpenAddModal, onDeleteItem, onToggleItem, onEditMeal
           </>
         ) : (
           <div style={{display:'flex', gap:'5px', alignItems:'center'}}>
-            <input value={titleDraft} onChange={(e) => setTitleDraft(e.target.value)} placeholder="Name" style={{width:'100px', padding:'4px'}} />
+           <input value={titleDraft} onChange={(e) => setTitleDraft(e.target.value)} placeholder="Name" style={{width:'100px', padding:'4px'}} title="Warning: Changing core names (Breakfast, Lunch, etc.) might disable AI preference tracking for this specific meal" />
             <input type="time" value={startTimeDraft} onChange={(e) => setStartTimeDraft(e.target.value)} />
             <input type="time" value={endTimeDraft} onChange={(e) => setEndTimeDraft(e.target.value)} />
             <button onClick={handleSaveEdit} style={{background:'green', color:'white', border:'none', padding:'4px 8px', borderRadius:'4px', cursor:'pointer'}}>Save</button>
@@ -295,26 +358,48 @@ export default function MealPlanner() {
   const [durationDays, setDurationDays] = useState(7);
   const [isSaving, setIsSaving] = useState(false);
 
-  // --- LOGIC INJECTION STARTS HERE ---
+  // state of add meal 
+  const [isNewMealModalOpen, setIsNewMealModalOpen] = useState(false);
+
   const location = useLocation();
   const navigate = useNavigate();
   
   const clientData = location.state?.client || { name: 'Guest', goal: 'General Health' };
-  const planToEdit = location.state?.planToEdit; // Check if we are editing
+  const planToEdit = location.state?.planToEdit; 
 
-  // 1. Initialize Date based on Edit Mode
+  // dynamic scores and apı request
+  const [warnings, setWarnings] = useState([]);
+
+  useEffect(() => {
+      const fetchWarnings = async () => {
+          const cid = clientData.id || clientData.ClientID;
+          if (!cid) return;
+          try {
+              const response = await fetch(`http://localhost:5000/api/dietitian/client-warnings/${cid}`);
+              const data = await response.json();
+              if (response.ok && data.status === "success") {
+                  setWarnings(data.warnings);
+              } else if (Array.isArray(data)) {
+                  setWarnings(data); 
+              }
+          } catch (err) {
+              console.error("Warning fetch error:", err);
+          }
+      };
+      fetchWarnings();
+  }, [clientData.id, clientData.ClientID]);
+  // ---------------------------------------------------------------------------------
+
   const [selectedDate, setSelectedDate] = useState(() => {
      return planToEdit ? planToEdit.date : new Date().toISOString().split('T')[0];
   });
 
-  // 2. Initialize Meals based on Edit Mode
   const [meals, setMeals] = useState(() => {
     if (planToEdit && planToEdit.meals) {
         return planToEdit.meals.map((m, index) => {
-            // Fix DB time (08:00:00) to Input time (08:00)
             const cleanTime = (m.time || "").split('-').map(t => t.trim().substring(0,5)).join(' - ');
             return {
-                id: Date.now() + index, // Generate temporary ID for React keys
+                id: Date.now() + index, 
                 title: m.title,
                 time: cleanTime,
                 items: m.items.map(i => ({
@@ -331,7 +416,6 @@ export default function MealPlanner() {
     }
     return INITIAL_MEALS;
   });
-  // --- LOGIC INJECTION ENDS ---
 
   const handleOpenModal = (mealId) => { setActiveMealId(mealId); setIsModalOpen(true); };
   const handleCloseModal = () => { setIsModalOpen(false); setActiveMealId(null); };
@@ -381,9 +465,10 @@ export default function MealPlanner() {
     setMeals(prev => prev.map(m => (m.id === mealId ? { ...m, title: updates.title ?? m.title, time: updates.time ?? m.time } : m)));
   };
 
-  const handleAddNewMealTime = () => {
+  // add mealtimes to popup
+  const confirmAddNewMeal = (selectedName, selectedTime) => {
     const newId = meals.length > 0 ? Math.max(...meals.map(m => m.id)) + 1 : 1;
-    setMeals([...meals, { id: newId, title: "New Meal", time: "12:00 - 13:00", items: [] }]);
+    setMeals([...meals, { id: newId, title: selectedName, time: selectedTime, items: [] }]);
   };
 
   const sortedMeals = [...meals].sort((a, b) => {
@@ -400,7 +485,7 @@ export default function MealPlanner() {
         client_id: clientData.id,
         date: selectedDate,
         meals: meals,
-        durationDays: planToEdit ? 1 : durationDays //for creating meal plans according to plan duration. If we are in edit mode, take duration as 1. Else take actual duration.
+        durationDays: planToEdit ? 1 : durationDays 
     };
 
     try {
@@ -456,20 +541,43 @@ export default function MealPlanner() {
             onDeleteMeal={handleDeleteMeal}
           />
         ))}
-        <button style={{padding: '10px 20px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', alignSelf: 'flex-start'}} onClick={handleAddNewMealTime}>
+        {/* now works with popup  instead of create meal plan*/}
+        <button style={{padding: '10px 20px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', alignSelf: 'flex-start', fontWeight: 'bold'}} onClick={() => setIsNewMealModalOpen(true)}>
             + Add New Meal Time
         </button>
       </div>
 
       <div style={styles.sidebar}>
          <GlobalNutritionSummary meals={meals} />
-         <div style={styles.warningBox}><strong>⚠️ Warnings / History:</strong><p style={{fontSize: '0.9em', marginTop: '5px'}}>Client changed banana with pomegranate 2 times.</p></div>
+         
+         {/* dynamic warnings*/}
+         <div style={styles.warningBox}>
+             <strong>⚠️ Warnings / History:</strong>
+             {Array.isArray(warnings) && warnings.length > 0 ? (
+                 <ul style={{ margin: '8px 0 0 0', paddingLeft: '18px', fontSize: '0.85em' }}>
+                     {warnings.map((w, index) => (
+                         <li key={index} style={{ marginBottom: '5px' }}>{w}</li>
+                     ))}
+                 </ul>
+             ) : (
+                 <p style={{ fontSize: '0.85em', marginTop: '5px', fontStyle: 'italic' }}>No dietary deviations recorded.</p>
+             )}
+         </div>
+       
+
          <button onClick={handleSavePlan} disabled={isSaving} style={{width: '100%', padding: '15px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '5px', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 6px rgba(0,0,0,0.1)'}}>
           {isSaving ? 'Saving...' : (planToEdit ? 'Update Plan' : 'Create Plan')}
         </button>
       </div>
 
+      {/* adding */}
       <AddMealModal isOpen={isModalOpen} onClose={handleCloseModal} onAdd={handleAddFood} />
+    
+      <AddNewMealModal 
+         isOpen={isNewMealModalOpen} 
+         onClose={() => setIsNewMealModalOpen(false)} 
+         onAdd={confirmAddNewMeal} 
+      />
     </div>
   );
 }

@@ -593,3 +593,32 @@ def get_available_items():
         return jsonify(items), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+
+from flask import jsonify 
+from models.models import ClientMealPreference # Table model
+
+@dietitian_bp.route('/client-warnings/<client_id>', methods=['GET'])
+def get_client_warnings(client_id):
+    try:
+        warnings = []
+        
+        # get preferences
+        preferences = ClientMealPreference.query.filter_by(ClientID=client_id).order_by(ClientMealPreference.Score.desc()).all()
+        
+        # Messages
+        for pref in preferences:
+            if pref.Score >= 55: 
+                warnings.append(f"⭐ TOP PICK: Client loves {pref.ItemName} for {pref.MealName} (Selected {pref.SelectionCount} times).")
+            elif pref.Score <= 45: 
+                warnings.append(f"🛑 AVOID: Client dislikes {pref.ItemName} in {pref.MealName} (Changed/Rejected {pref.RejectionCount} times).")
+                
+        return jsonify({
+            "status": "success", 
+            "warnings": warnings
+        }), 200
+
+    except Exception as e:
+        print(f"Warning Route Error: {e}")
+        return jsonify({"status": "error", "error": str(e)}), 500
