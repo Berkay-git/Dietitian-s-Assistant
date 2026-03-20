@@ -17,7 +17,7 @@ from services.meal_service import *
 from services.physical_details_service import get_progress_data
 import services.client_service as client_service# web için, böyle importlamak lazim yoksa çalışmıyor.
 import services.meal_service as meal_service# web için, böyle importlamayınca çalışmıyor. (from ... import *) olmuyor.
-
+from services.preference_service import get_meal_fruit_recommendations, get_meal_fruit_recommendations_from_meal_id
 
 
 dietitian_bp = Blueprint('dietitian', __name__)
@@ -86,6 +86,62 @@ def login():
         print(f"Exception message: {str(e)}")
         return jsonify({'error': 'Sunucu hatası'}), 500
     
+
+
+@dietitian_bp.route('/fruit-recommendations', methods=['GET'])
+def get_fruit_recommendations():
+    """
+    Returns fruit recommendations for a client in a given meal.
+    Query params:
+    - client_id
+    - meal_name or meal_id
+    - limit (optional)
+    """
+    try:
+        client_id = request.args.get('client_id')
+        meal_name = request.args.get('meal_name')
+        meal_id = request.args.get('meal_id')
+        limit = request.args.get('limit', default=3, type=int)
+
+        if not client_id:
+            return jsonify({'error': 'client_id is required'}), 400
+
+        if not meal_name and not meal_id:
+            return jsonify({'error': 'meal_name or meal_id is required'}), 400
+
+        if meal_id:
+            success, message, recommendations = get_meal_fruit_recommendations_from_meal_id(
+                client_id=client_id,
+                meal_id=meal_id,
+                limit=limit
+            )
+        else:
+            success, message, recommendations = get_meal_fruit_recommendations(
+                client_id=client_id,
+                meal_name=meal_name,
+                limit=limit
+            )
+
+        if success:
+            return jsonify({
+                'success': True,
+                'message': message,
+                'client_id': client_id,
+                'meal_name': meal_name,
+                'recommendations': recommendations
+            }), 200
+
+        return jsonify({
+            'success': False,
+            'error': message
+        }), 400
+
+    except Exception as e:
+        print(f"Error in get_fruit_recommendations: {str(e)}")
+        traceback.print_exc()
+        return jsonify({'error': 'Server error'}), 500
+
+
 # Mobile
 @dietitian_bp.route('/meals', methods=['GET'])
 def getMeals():

@@ -1,7 +1,7 @@
 from models.models import MealItem, Meal, DailyMealPlan, Item, Client, PhysicalDetails, MedicalDetails
 from db_config import db
 from services.item_service import get_item_by_id, calculate_item_calories, calculate_portion_calories
-
+from services.preference_service import update_preference_after_manual_replacement
 from datetime import date, datetime
 import traceback
 
@@ -287,6 +287,28 @@ def give_feedback_on_mealitem_manually(client_id, meal_id, item_id, changedItem,
         if not meal_item:
             return False, "Meal item not found", None
         
+        selected_item_id = None
+
+        # CASE 1: dict gelirse (doğru format)
+        if isinstance(changedItem, dict):
+            selected_item_id = changedItem.get("item_id")
+
+        # CASE 2: list gelirse (frontend bazen array gönderiyor)
+        elif isinstance(changedItem, list) and len(changedItem) > 0:
+            selected_item_id = changedItem[0].get("item_id")
+
+        # CASE 3: legacy string (senin şu anki bug)
+        elif isinstance(changedItem, str):
+            # örnek: "Banana - 100g"
+            selected_name = changedItem.split(" - ")[0].strip()
+
+            selected_item = Item.query.filter_by(ItemName=selected_name).first()
+            if selected_item:
+                selected_item_id = selected_item.ItemID
+
+        
+
+
         # It will not be overwritten of an itemID so we can track what changed with what.
         # UI should be designed to show the previous and new item if changedItem is not null.
         # Update the meal item with manual feedback
@@ -297,6 +319,26 @@ def give_feedback_on_mealitem_manually(client_id, meal_id, item_id, changedItem,
         # Commit changes to database
         db.session.commit()
         
+        preference_message = None
+
+        print("=== DEBUG PREFERENCE ===")
+        print("changedItem:", changedItem)
+        print("selected_item_id:", selected_item_id)
+        
+        if selected_item_id:
+            pref_success, pref_message = update_preference_after_manual_replacement(
+                client_id=client_id,
+                meal_id=meal_id,
+                original_item_id=item_id,
+                selected_item_id=selected_item_id
+            )
+            preference_message = pref_message
+            if not pref_success:
+                print(f"Preference update warning: {pref_message}")
+
+
+
+
         # Get item details for response
         item = get_item_by_id(item_id)
         if not item:
@@ -328,7 +370,8 @@ def give_feedback_on_mealitem_manually(client_id, meal_id, item_id, changedItem,
             'isLLM': meal_item.isLLM,
             'protein': round(item['ItemProtein'] * (meal_item.ConsumeAmount / 100), 1),
             'carb': round(item['ItemCarb'] * (meal_item.ConsumeAmount / 100), 1),
-            'fat': round(item['ItemFat'] * (meal_item.ConsumeAmount / 100), 1)
+            'fat': round(item['ItemFat'] * (meal_item.ConsumeAmount / 100), 1),
+            'preferenceUpdate': preference_message
         }
         
         return True, "Feedback successfully saved", updated_item_data

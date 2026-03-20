@@ -318,25 +318,27 @@ export default function MealDetailModal({
     itemID: string;
     isFollowed: boolean;
     changedItems?: Array<{
+      itemID: string;
       itemName: string;
       portion: number;
     }> | null;
   }) => {
     try {
-      let changed_item_string = null;
-      
+      let changed_item = null;
+    
       if (feedback.changedItems && feedback.changedItems.length > 0) {
-        changed_item_string = feedback.changedItems
-          .map(item => `${item.itemName} - ${item.portion}g`)
-          .join(', ');
+        changed_item = feedback.changedItems.map(item => ({
+          item_id: item.itemID,
+          name: item.itemName,
+          portion: item.portion
+        }));
       }
-      
       const feedbackData = {
         client_id: selectedFeedbackItem?.clientID,
         meal_id: selectedFeedbackItem?.mealID,
         item_id: feedback.itemID,
         is_followed: feedback.isFollowed,
-        changed_item: changed_item_string
+        changed_item: changed_item
       };
       
       console.log('Sending feedback to backend:', feedbackData);

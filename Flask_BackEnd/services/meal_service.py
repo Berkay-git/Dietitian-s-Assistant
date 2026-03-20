@@ -234,30 +234,31 @@ def get_meals_by_clientid_and_date(client_id, plan_date):
                 scaled_carb = (item.ItemCarb or 0) * ratio
                 scaled_fat = (item.ItemFat or 0) * ratio
                 
-                # Parse changedItem from database format: "Name - portion, Name2 - portion2"
-                # Convert to: "name,portion,calories,protein,carb,fat;name2,portion2,calories2,protein2,carb2,fat2"
+                # Parse changedItem from database
+                # Supports:
+                # 1) new JSON/list format: [{"item_id": "...", "name": "...", "portion": 100}]
+                # 2) single JSON/object format: {"item_id": "...", "name": "...", "portion": 100}
+                # 3) legacy string format: "Banana - 100g, Apple - 80g"
                 changed_item_parsed = None
                 if mi.ChangedItem:
-                    # Database format: "Greek Yogurt - 150g, Honey - 20g"
-                    items_list = mi.ChangedItem.split(', ')  # ", " ile ayır (database formatı/ Name - Portion, ...)
                     parsed_items = []
-                    
-                    for item_str in items_list:
-                        # Split "Greek Yogurt - 150g" into name and portion
-                        parts = item_str.split(' - ')
-                        if len(parts) == 2:
-                            changed_name = parts[0].strip()
-                            changed_portion_str = parts[1].strip().replace('g', '')
-                            
-                            try:
-                                changed_portion = int(changed_portion_str)
-                            except ValueError:
+
+                    # NEW FORMAT: list of objects
+                    if isinstance(mi.ChangedItem, list):
+                        for changed in mi.ChangedItem:
+                            changed_name = changed.get('name')
+                            changed_portion = changed.get('portion')
+
+                            if not changed_name or changed_portion is None:
                                 continue
-                            
-                            # Find item in database by name
+
+                            try:
+                                changed_portion = int(changed_portion)
+                            except (ValueError, TypeError):
+                                continue
+
                             changed_item_obj = Item.query.filter_by(ItemName=changed_name).first()
                             if changed_item_obj:
-                                # Calculate macros for changed item
                                 changed_100g_cals = calculate_item_calories(
                                     changed_item_obj.ItemProtein or 0,
                                     changed_item_obj.ItemCarb or 0,
@@ -267,20 +268,87 @@ def get_meals_by_clientid_and_date(client_id, plan_date):
                                     changed_100g_cals,
                                     changed_portion
                                 )
-                                
+
                                 changed_ratio = changed_portion / 100.0
                                 changed_protein = (changed_item_obj.ItemProtein or 0) * changed_ratio
                                 changed_carb = (changed_item_obj.ItemCarb or 0) * changed_ratio
                                 changed_fat = (changed_item_obj.ItemFat or 0) * changed_ratio
-                                
-                                # Format: "name,portion,calories,protein,carb,fat"
+
                                 parsed_items.append(
                                     f"{changed_name},{changed_portion},{round(changed_cals)},"
                                     f"{round(changed_protein, 1)},{round(changed_carb, 1)},{round(changed_fat, 1)}"
                                 )
-                    
-                    # Join with semicolon for multiple items
-                    # Example result: "Greek Yogurt,150,120,18.0,6.0,3.0;Honey,20,60,0.0,16.0,0.0"
+
+                    # NEW FORMAT: single object
+                    elif isinstance(mi.ChangedItem, dict):
+                        changed_name = mi.ChangedItem.get('name')
+                        changed_portion = mi.ChangedItem.get('portion')
+
+                        if changed_name and changed_portion is not None:
+                            try:
+                                changed_portion = int(changed_portion)
+                            except (ValueError, TypeError):
+                                changed_portion = None
+
+                            if changed_portion is not None:
+                                changed_item_obj = Item.query.filter_by(ItemName=changed_name).first()
+                                if changed_item_obj:
+                                    changed_100g_cals = calculate_item_calories(
+                                        changed_item_obj.ItemProtein or 0,
+                                        changed_item_obj.ItemCarb or 0,
+                                        changed_item_obj.ItemFat or 0,
+                                    )
+                                    changed_cals = calculate_portion_calories(
+                                        changed_100g_cals,
+                                        changed_portion
+                                    )
+
+                                    changed_ratio = changed_portion / 100.0
+                                    changed_protein = (changed_item_obj.ItemProtein or 0) * changed_ratio
+                                    changed_carb = (changed_item_obj.ItemCarb or 0) * changed_ratio
+                                    changed_fat = (changed_item_obj.ItemFat or 0) * changed_ratio
+
+                                    parsed_items.append(
+                                        f"{changed_name},{changed_portion},{round(changed_cals)},"
+                                        f"{round(changed_protein, 1)},{round(changed_carb, 1)},{round(changed_fat, 1)}"
+                                    )
+
+                    # LEGACY FORMAT: string
+                    elif isinstance(mi.ChangedItem, str):
+                        items_list = mi.ChangedItem.split(', ')
+                        for item_str in items_list:
+                            parts = item_str.split(' - ')
+                            if len(parts) == 2:
+                                changed_name = parts[0].strip()
+                                changed_portion_str = parts[1].strip().replace('g', '')
+
+                                try:
+                                    changed_portion = int(changed_portion_str)
+                                except ValueError:
+                                    continue
+
+                                changed_item_obj = Item.query.filter_by(ItemName=changed_name).first()
+                                if changed_item_obj:
+                                    changed_100g_cals = calculate_item_calories(
+                                        changed_item_obj.ItemProtein or 0,
+                                        changed_item_obj.ItemCarb or 0,
+                                        changed_item_obj.ItemFat or 0,
+                                    )
+                                    changed_cals = calculate_portion_calories(
+                                        changed_100g_cals,
+                                        changed_portion
+                                    )
+
+                                    changed_ratio = changed_portion / 100.0
+                                    changed_protein = (changed_item_obj.ItemProtein or 0) * changed_ratio
+                                    changed_carb = (changed_item_obj.ItemCarb or 0) * changed_ratio
+                                    changed_fat = (changed_item_obj.ItemFat or 0) * changed_ratio
+
+                                    parsed_items.append(
+                                        f"{changed_name},{changed_portion},{round(changed_cals)},"
+                                        f"{round(changed_protein, 1)},{round(changed_carb, 1)},{round(changed_fat, 1)}"
+                                    )
+
                     if parsed_items:
                         changed_item_parsed = ';'.join(parsed_items)
                 

@@ -22,7 +22,8 @@ def get_item_by_id(item_id):
             'ItemFat': float(item.ItemFat) if item.ItemFat else 0,
             'ItemFiber': float(item.ItemFiber) if item.ItemFiber else 0,
             'ItemVitamins': item.ItemVitamins,
-            'ItemMinerals': item.ItemMinerals
+            'ItemMinerals': item.ItemMinerals,
+            'ItemCategory': item.ItemCategory
         }
     except Exception as e:
         print(f"Error in get_item_by_id: {str(e)}")
@@ -48,3 +49,5 @@ def calculate_portion_calories(total_calories, portion_grams):
         float: Calories for the portion
     """
     return total_calories * (portion_grams / 100)
+
+

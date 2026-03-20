@@ -111,6 +111,7 @@ class Item(db.Model):
     ItemFiber = db.Column(db.Float)
     ItemVitamins = db.Column(db.JSON)
     ItemMinerals = db.Column(db.JSON)
+    ItemCategory = db.Column(db.String(30))
     
     # Relationships
     meal_items = db.relationship('MealItem', backref='item', lazy="selectin")
@@ -147,3 +148,25 @@ class ClientProgressSnapshot(db.Model):
     ProgressDate = db.Column(db.Date, nullable=False)
 
 
+class ClientMealPreference(db.Model):
+    __tablename__ = 'clientmealpreference'
+    
+    PreferenceID = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    ClientID = db.Column(db.String(36), nullable=False)
+    MealName = db.Column(db.String(20), nullable=False)
+    ItemID = db.Column(db.String(36), nullable=False)
+    ItemName = db.Column(db.String(100))
+    Score = db.Column(db.Integer, nullable=False, default=50)
+    SelectionCount = db.Column(db.Integer, nullable=False, default=0)
+    RejectionCount = db.Column(db.Integer, nullable=False, default=0)
+
+    def to_dict(self):
+        return {
+            'preference_id': self.PreferenceID,
+            'client_id': self.ClientID,
+            'meal_name': self.MealName,
+            'item_id': self.ItemID,
+            'score': self.Score,
+            'selection_count': self.SelectionCount,
+            'rejection_count': self.RejectionCount
+        }
