@@ -142,8 +142,8 @@ class ClientProgressSnapshot(db.Model):
     
     SnapshotID = db.Column(db.String(36), primary_key=True)
     ClientID = db.Column(db.String(36), db.ForeignKey('Client.ClientID', ondelete='CASCADE'), nullable=False)
-    Weight = db.Column(db.Numeric(5, 2))
-    BodyFat = db.Column(db.Numeric(4, 1))
+    Total = db.Column(db.Integer)
+    Adhered = db.Column(db.Integer)
     AdherenceRate = db.Column(db.Numeric(5, 2))
     ProgressDate = db.Column(db.Date, nullable=False)
 

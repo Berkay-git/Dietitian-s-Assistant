@@ -6,7 +6,8 @@ import { useChart, ChartDataPoint } from '../../context/ChartContext';
 import ChartGenerator from '../../components/common/ChartGenerator';
 
 const TYPE_OPTIONS = ['Weight', 'Body Fat', 'Adherence'];
-const DURATION_OPTIONS = ['Daily', 'Weekly', 'Monthly'];
+const ALL_durationOptions = ['Daily', 'Weekly', 'Monthly'];
+const NO_DAILY_TYPES = ['Weight', 'Body Fat'];
 
 const METRIC_INFO: Record<string, { unit: string; description: string }> = {
   'Weight':     { unit: 'kg',  description: 'Track your weight changes over time' },
@@ -31,7 +32,9 @@ function SkeletonBar({ height, shimmer }: { height: string; shimmer: Animated.Va
 
 export default function Progress() {
   const [selectedType, setSelectedType] = useState('Weight');
-  const [selectedDuration, setSelectedDuration] = useState('Weekly');
+  const [selectedDuration, setSelectedDuration] = useState('Weekly'); // For the selection of the duration option
+  const [activeDuration, setActiveDuration] = useState('Weekly'); // For the already selected and generated duration option, this seperation is needed otherwise the graphs glitches/blinks with "undefined" on durations but the graph remains same.
+  const [activeType, setActiveType] = useState('Weight'); // Same logic as activeDuration, prevents color/unit changes on chart before generating
 
   const { user } = useAuth();
   const { chartData, loading, error, hasGenerated, fetchChartData } = useChart();
@@ -52,9 +55,20 @@ export default function Progress() {
 
   const info = METRIC_INFO[selectedType];
   const durationInfo = DURATION_INFO[selectedDuration];
+  const durationOptions = NO_DAILY_TYPES.includes(selectedType)
+    ? ALL_durationOptions.filter(o => o !== 'Daily')
+    : ALL_durationOptions;
+
+  useEffect(() => {
+    if (NO_DAILY_TYPES.includes(selectedType) && selectedDuration === 'Daily') {
+      setSelectedDuration('Weekly');
+    }
+  }, [selectedType]);
 
   const handleGenerate = () => {
     if (user?.user_id) {
+      setActiveDuration(selectedDuration);
+      setActiveType(selectedType);
       fetchChartData(user.user_id, selectedType, selectedDuration);
     }
   };
@@ -97,7 +111,7 @@ export default function Progress() {
         <View style={[styles.sectionBlock, { marginBottom: 0 }]}>
           <Text style={styles.label}>Duration</Text>
           <View style={styles.pillRow}>
-            {DURATION_OPTIONS.map((option) => (
+            {durationOptions.map((option) => (
               <TouchableOpacity
                 key={option}
                 style={[styles.pill, selectedDuration === option && styles.pillActive]}
@@ -196,9 +210,9 @@ export default function Progress() {
         {hasGenerated && !loading && (
           <ChartGenerator
             data={chartData}
-            unit={info.unit}
-            metric={selectedType}
-            duration={selectedDuration}
+            unit={METRIC_INFO[activeType].unit}
+            metric={activeType}
+            duration={activeDuration} // use of activeDuration to prevent glitches and changes on graph before generating the report
             onWindowChange={setWindowData}
           />
         )}

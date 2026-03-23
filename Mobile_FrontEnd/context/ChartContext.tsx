@@ -46,7 +46,7 @@ export const ChartProvider = ({ children }: { children: ReactNode }) => {
       const mappedDuration = DURATION_MAP[duration] ?? duration.toLowerCase();
 
       const response = await axios.get(`${API_URL}/api/dietitian/progress-data`, {
-        params: { client_id: clientId, metric: mappedMetric, duration: mappedDuration },
+        params: { client_id: clientId, metric: mappedMetric, duration: mappedDuration },  // Sending the parameters as arguments
       });
 
       if (response.data.success) {

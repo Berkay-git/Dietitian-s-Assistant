@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, LayoutChangeEvent, TouchableOpacity } from 'react-native';
+import { View, Text, LayoutChangeEvent, TouchableOpacity } from 'react-native';
 import Svg, { Path, Circle, Line, Text as SvgText, Rect } from 'react-native-svg';
 import { ChartDataPoint } from '../../context/ChartContext';
+import { styles } from '../../styles/screens/ChartGeneratorStyles';
 
 interface Props {
   data: ChartDataPoint[];
@@ -11,13 +12,21 @@ interface Props {
   onWindowChange?: (windowData: ChartDataPoint[]) => void;
 }
 
-const PADDING = { left: 44, right: 16, top: 30, bottom: 36 };
+const PADDING = { left: 52, right: 16, top: 30, bottom: 36 };
 const CHART_HEIGHT = 240;
+const KG_TO_LBS = 2.20462;
 
+const METRIC_COLORS: Record<string, string> = {
+  'Weight':    '#007AFF', // Blue
+  'Body Fat':  '#FF6B35', // Orange
+  'Adherence': '#34C759', // Green
+};
+
+// Oluşturulan grafikte kaç tane data point olacağını gösterir
 const WINDOW_SIZE: Record<string, number> = {
-  'Daily':   7,
-  'Weekly':  8,
-  'Monthly': 12,
+  'Daily':   7,  //To see detailed version of a week
+  'Weekly':  4,  //To see detailed version of a month
+  'Monthly': 3,  //To see each season
 };
 
 function formatXLabel(date: string): string {
@@ -51,8 +60,11 @@ function getPageLabel(windowData: ChartDataPoint[], duration: string): string {
 }
 
 export default function ChartGenerator({ data, unit, metric, duration, onWindowChange }: Props) {
+  const color = METRIC_COLORS[metric] ?? '#007AFF';
+  const isKg = unit === 'kg';
   const [chartWidth, setChartWidth] = useState(0);
   const [showValues, setShowValues] = useState(true);
+  const [showLbs, setShowLbs] = useState(false);
 
   const windowSize = WINDOW_SIZE[duration] ?? 7;
   const totalPages = Math.ceil(data.length / windowSize);
@@ -67,7 +79,7 @@ export default function ChartGenerator({ data, unit, metric, duration, onWindowC
       const start = currentPage * windowSize;
       onWindowChange(data.slice(start, start + windowSize));
     }
-  }, [currentPage, data.length, duration]);
+  }, [currentPage, data]);
 
   if (!data || data.length === 0) {
     return (
@@ -120,14 +132,26 @@ export default function ChartGenerator({ data, unit, metric, duration, onWindowC
       {/* Top row: page label + values toggle */}
       <View style={styles.topRow}>
         <Text style={styles.pageLabel}>{getPageLabel(windowData, duration)}</Text>
-        <TouchableOpacity
-          style={[styles.toggleBtn, showValues && styles.toggleBtnActive]}
-          onPress={() => setShowValues(v => !v)}
-        >
-          <Text style={[styles.toggleBtnText, showValues && styles.toggleBtnTextActive]}>
-            Values {showValues ? 'ON' : 'OFF'}
-          </Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', gap: 6 }}>
+          {isKg && (
+            <TouchableOpacity
+              style={[styles.toggleBtn, { borderColor: color, backgroundColor: color + '15' }]}
+              onPress={() => setShowLbs(v => !v)}
+            >
+              <Text style={[styles.toggleBtnText, { color }]}>
+                {showLbs ? 'lbs' : 'kg'}
+              </Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            style={[styles.toggleBtn, showValues && { borderColor: color, backgroundColor: color + '15' }]}
+            onPress={() => setShowValues(v => !v)}
+          >
+            <Text style={[styles.toggleBtnText, showValues && { color }]}>
+              Values {showValues ? 'ON' : 'OFF'}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Chart SVG */}
@@ -140,15 +164,18 @@ export default function ChartGenerator({ data, unit, metric, duration, onWindowC
             ))}
 
             {/* Fill area */}
-            <Path d={fillPath} fill="#007AFF" fillOpacity={0.08} />
+            <Path d={fillPath} fill={color} fillOpacity={0.08} />
 
             {/* Line */}
-            <Path d={linePath} stroke="#007AFF" strokeWidth={2.5} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+            <Path d={linePath} stroke={color} strokeWidth={2.5} fill="none" strokeLinecap="round" strokeLinejoin="round" />
 
             {/* Data points + optional value labels */}
             {points.map((p, i) => {
-              const valStr = windowData[i].value.toFixed(1);
-              const rectW = valStr.length * 6 + 8;
+              const val = windowData[i].value;
+              const displayVal = isKg && showLbs ? (val * KG_TO_LBS).toFixed(1) : val.toFixed(1);
+              const displayUnit = isKg ? (showLbs ? 'lbs' : 'kg') : unit;
+              const displayStr = `${displayVal} ${displayUnit}`;
+              const rectW = displayStr.length * 5.5 + 12;
               const rectH = 14;
               const isNearTop = p.y - PADDING.top < 35;
               const labelY = isNearTop ? p.y + 22 : p.y - 12;
@@ -156,13 +183,13 @@ export default function ChartGenerator({ data, unit, metric, duration, onWindowC
               const rectY = labelY - 11;
               return (
                 <React.Fragment key={i}>
-                  <Circle cx={p.x} cy={p.y} r={5} fill="#007AFF" />
+                  <Circle cx={p.x} cy={p.y} r={5} fill={color} />
                   <Circle cx={p.x} cy={p.y} r={2.5} fill="white" />
                   {showValues && (
                     <>
-                      <Rect x={rectX} y={rectY} width={rectW} height={rectH} rx={3} fill="white" stroke="#007AFF" strokeWidth={0.8} />
-                      <SvgText x={p.x} y={labelY} fontSize={9} fill="#007AFF" textAnchor="middle" fontWeight="600">
-                        {valStr}
+                      <Rect x={rectX} y={rectY} width={rectW} height={rectH} rx={3} fill="white" stroke={color} strokeWidth={0.8} />
+                      <SvgText x={p.x} y={labelY} fontSize={9} fill={color} textAnchor="middle" fontWeight="600">
+                        {displayStr}
                       </SvgText>
                     </>
                   )}
@@ -213,82 +240,3 @@ export default function ChartGenerator({ data, unit, metric, duration, onWindowC
   );
 }
 
-const styles = StyleSheet.create({
-  emptyContainer: {
-    height: 120,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  emptyText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#6B7280',
-  },
-  emptySubText: {
-    fontSize: 12,
-    color: '#9CA3AF',
-  },
-  topRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  pageLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#374151',
-  },
-  toggleBtn: {
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#F9FAFB',
-  },
-  toggleBtnActive: {
-    borderColor: '#007AFF',
-    backgroundColor: '#EFF6FF',
-  },
-  toggleBtnText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#9CA3AF',
-  },
-  toggleBtnTextActive: {
-    color: '#007AFF',
-  },
-  navRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 8,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
-  },
-  navBtn: {
-    paddingVertical: 6,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    backgroundColor: '#1A1A2E',
-  },
-  navBtnDisabled: {
-    backgroundColor: '#F3F4F6',
-  },
-  navBtnText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  navBtnTextDisabled: {
-    color: '#D1D5DB',
-  },
-  pageInfo: {
-    fontSize: 12,
-    color: '#6B7280',
-    fontWeight: '500',
-  },
-});

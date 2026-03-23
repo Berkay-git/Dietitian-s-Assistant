@@ -1,12 +1,13 @@
 #Burası ise controller kısmıdır. Sadece metodlar bulunur, API/Endpoint kısmı burasıdır.Request alır,Service çağırır,Response döner.
 #Ne kadar az kod olursa o kadar iyidir, python backendde.
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, send_file
 from services.allServices import AuthService
 import jwt #Session yerine token, Web+Mobil için ideal,  pip install PyJWT (Backend terminali içerisinde yaz, genel klasöre yazma)
 from datetime import datetime, timedelta, date
 from db_config import Config
 import traceback
+
 
 from models.models import Client # Import client details
 from services.dailymealplan_service import *
@@ -14,7 +15,7 @@ from models.models import Client, PhysicalDetails, MedicalDetails
 from services.client_service import *
 from services.mealitem_service import *
 from services.meal_service import *
-from services.physical_details_service import get_progress_data
+from services.physical_details_service import get_progress_data, create_pdf_report
 import services.client_service as client_service# web için, böyle importlamak lazim yoksa çalışmıyor.
 import services.meal_service as meal_service# web için, böyle importlamayınca çalışmıyor. (from ... import *) olmuyor.
 from services.preference_service import get_meal_fruit_recommendations, get_meal_fruit_recommendations_from_meal_id
@@ -561,10 +562,11 @@ def reactivate_client(client_id):
         return jsonify({'error': str(e)}), 500
     
 
-# Mobile (Progress)
+# Mobile (Progress Tab Graphs)
 @dietitian_bp.route('/progress-data', methods=['GET'])
 def get_client_progress_data():
     try:
+        #Get the request
         client_id = request.args.get('client_id')
         metric = request.args.get('metric')
         duration = request.args.get('duration')
@@ -583,6 +585,22 @@ def get_client_progress_data():
         print(f"Error in get_client_progress_data: {str(e)}")
         return jsonify({'error': 'Server error'}), 500
 
+
+# Web (Progress PDF Report)
+@dietitian_bp.route('/clients/progress-report', methods=['GET'])
+def get_progress_report():
+    try:
+        client_id = request.args.get('client_id')
+        option = request.args.get('option', 'all')  # 'weekly' or 'monthly' or 'all' if option is not exists in json format, the default is all.
+        buf, error = create_pdf_report(client_id, option)
+        if error:
+            return jsonify({'error': error}), 404
+        return send_file(buf, mimetype='application/pdf',
+                         as_attachment=True,
+                         download_name=f'progress_report_{client_id}.pdf')
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
 
 # to get items from database and use them when addin a meal to client.
 @dietitian_bp.route('/items', methods=['GET'])
