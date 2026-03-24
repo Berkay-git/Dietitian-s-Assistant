@@ -10,6 +10,8 @@ export default function ClientDetails() {
   const [clientData, setClientData] = useState(null); 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   // FETCH DATA
   useEffect(() => {
@@ -88,6 +90,42 @@ export default function ClientDetails() {
     }
   };
 
+  const handleDownload = async (option) => {
+    setShowReportModal(false); // Close the popup
+    setIsDownloading(true);    // SHOW THE FANCY SPINNER
+    try {
+      const url = `http://localhost:5000/api/dietitian/clients/progress-report?client_id=${clientData.id}&option=${option}`;
+      
+      // Wait for the backend to generate and send the PDF
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        throw new Error("Server failed to generate the report.");
+      }
+
+      // Convert response to a file and trigger download
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = `progress_report_${clientData.name}_${option}.pdf`; 
+      document.body.appendChild(link);
+      link.click();
+      
+      // Clean up
+      link.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+
+    } catch (error) {
+      console.error("Download error:", error);
+      alert("Error downloading report.");
+    } finally {
+      setIsDownloading(false); // HIDE THE SPINNER WHEN DONE
+    }
+  };
+
+  
+
   // --- RENDERING ---
   
   if (loading) return <div style={styles.centerMsg}>Loading...</div>;
@@ -96,8 +134,26 @@ export default function ClientDetails() {
 
   const isInactive = clientData.status === 'Inactive';
 
+  // animation for loading
+  const spinnerKeyframes = `
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  `;
+
   return (
     <div style={styles.mainContainer}>
+      <style>{spinnerKeyframes}</style> {/* This makes the animation work */}
+      
+      {/* --- THE FANCY LOADING OVERLAY --- */}
+      {isDownloading && (
+        <div style={styles.downloadingOverlay}>
+          <div style={styles.fancySpinner}></div>
+          <h2 style={styles.downloadingText}>Generating PDF...</h2>
+          <p style={{color: '#ddd', marginTop: '5px'}}>Please wait, this might take a few seconds.</p>
+        </div>
+      )}
       <div style={styles.contentContainer}>
         
         {/* Header */}
@@ -110,7 +166,11 @@ export default function ClientDetails() {
 
         {/* Profile Card */}
         <div style={styles.profileCard}>
-          
+          <div style={styles.toggleContainer}>
+            <span style={styles.toggleLabel}>
+            {isInactive ? "Reactivate Client" : "Deactivate Client"}
+            </span>
+          </div>
           {/* TOGGLE BUTTONS: Show based on status */}
           {isInactive ? (
              // SHOW REACTIVATE BUTTON (Green)
@@ -190,6 +250,36 @@ export default function ClientDetails() {
             <span style={styles.buttonText}>Create Plan</span>
           </button>
         </div>
+        
+        <div style={styles.padded}>
+          
+          {/* 3. UPDATED BUTTON: Changes onClick and adds disabled state */}
+          <button 
+            style={{...styles.paddedButton, opacity: isInactive ? 0.5 : 1}} 
+            onClick={() => {
+              if (!isInactive) setShowReportModal(true);
+            }}
+            disabled={isInactive}
+          >
+            <span style={styles.buttonEmoji}>📑</span>
+            <span style={styles.buttonText}>Download Report</span>
+          </button>
+          
+          {/* 4. THE POPUP MODAL */}
+          {showReportModal && (
+            <div style={styles.modalOverlay}>
+              <div style={styles.modalContent}>
+                <h3 style={{ marginTop: 0, marginBottom: '15px' }}>Select Report Range</h3>
+                <button style={styles.optionBtn} onClick={() => handleDownload('weekly')}>Weekly</button>
+                <button style={styles.optionBtn} onClick={() => handleDownload('monthly')}>Monthly</button>
+                <button style={styles.optionBtn} onClick={() => handleDownload('all')}>Both</button>
+                <hr style={{ width: '100%', border: '0.5px solid #eee', margin: '10px 0' }} />
+                <button style={styles.cancelBtn} onClick={() => setShowReportModal(false)}>Cancel</button>
+              </div>
+            </div>
+          )}
+
+        </div>
 
       </div>
     </div>
@@ -207,7 +297,7 @@ const styles = {
   
   // STYLE FOR DEACTIVATE (Red)
   deactivateButton: {
-    position: 'absolute', top: '15px', right: '15px',
+    position: 'absolute', top: '22px', right: '15px',
     background: '#ffebee', border: '1px solid #ffcdd2', borderRadius: '50%',
     width: '35px', height: '35px', display: 'flex', justifyContent: 'center', alignItems: 'center',
     cursor: 'pointer', fontSize: '16px'
@@ -215,7 +305,7 @@ const styles = {
   
   // NEW STYLE FOR REACTIVATE (Green)
   reactivateButton: {
-    position: 'absolute', top: '15px', right: '15px',
+    position: 'absolute', top: '22px', right: '15px',
     background: '#e8f5e9', border: '1px solid #c8e6c9', borderRadius: '50%',
     width: '35px', height: '35px', display: 'flex', justifyContent: 'center', alignItems: 'center',
     cursor: 'pointer', fontSize: '16px'
@@ -239,9 +329,89 @@ const styles = {
   gridLabel: { fontSize: '14px', color: '#666', marginBottom: '5px' },
   gridValue: { fontSize: '16px', color: '#333', fontWeight: 'bold' },
   actionButtonRow: { width: '100%', display: 'flex', gap: '15px', justifyContent: 'space-between' },
+  padded: { width: '60%', display: 'flex', gap: '15px', justifyContent: 'space-between', marginTop: '15px' },
   createPlanButton: { flex: 1, backgroundColor: '#28a745', padding: '15px', borderRadius: '15px', display: 'flex', flexDirection: 'column', alignItems: 'center', border: 'none', cursor: 'pointer', boxShadow: '0 4px 10px rgba(40, 167, 69, 0.3)' },
   viewPlanButton:   { flex: 1, backgroundColor: '#007AFF', padding: '15px', borderRadius: '15px', display: 'flex', flexDirection: 'column', alignItems: 'center', border: 'none', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0, 122, 255, 0.3)' },
+  paddedButton:   { flex: 1, backgroundColor: '#b96228', padding: '15px', borderRadius: '15px', display: 'flex', flexDirection: 'column', alignItems: 'center', border: 'none', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0, 122, 255, 0.3)' },
   buttonEmoji: { fontSize: '24px', marginBottom: '5px' },
   buttonText: { color: '#fff', fontSize: '16px', fontWeight: 'bold' },
-  centerMsg: { marginTop: '50px', fontSize: '18px', color: '#666', textAlign: 'center' }
+  centerMsg: { marginTop: '50px', fontSize: '18px', color: '#666', textAlign: 'center' },
+
+  toggleContainer: {
+    marginLeft: '265px',
+    display: 'flex',
+    alignItems: 'center', // Keeps text and button centered vertically
+    gap: '10px',          // Adds space between the text and the button
+    justifyContent: 'flex-end', // Change to 'flex-end' if you want it on the right side of the card
+  },
+  toggleLabel: {
+    fontSize: '14px',
+    fontWeight: '500',
+    color: '#333',       // Adjust color as needed
+  },
+  modalOverlay: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)', // Dark background
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000, // Make sure it's on top
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    padding: '25px',
+    borderRadius: '12px',
+    display: 'flex',
+    flexDirection: 'column',
+    width: '300px',
+    boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
+  },
+  optionBtn: {
+    padding: '12px',
+    margin: '5px 0',
+    backgroundColor: '#f8f9fa',
+    border: '1px solid #ddd',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    fontWeight: 'bold',
+  },
+  cancelBtn: {
+    padding: '10px',
+    color: '#ff4d4d',
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    fontWeight: 'bold',
+  },
+  downloadingOverlay: {
+    position: 'fixed',
+    top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.85)', // Dark transparent background
+    backdropFilter: 'blur(5px)',            // Blurs the page behind it
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 9999,                           // Stays on top of EVERYTHING
+  },
+  fancySpinner: {
+    width: '60px',
+    height: '60px',
+    border: '6px solid rgba(255, 255, 255, 0.2)', // Light translucent border
+    borderTop: '6px solid #007AFF',               // Blue spinning part
+    borderRadius: '50%',
+    animation: 'spin 1s linear infinite',         // Uses the keyframes we injected
+    marginBottom: '20px',
+  },
+  downloadingText: {
+    color: '#ffffff',
+    fontSize: '24px',
+    fontWeight: 'bold',
+    margin: 0,
+    letterSpacing: '1px',
+  }
 };

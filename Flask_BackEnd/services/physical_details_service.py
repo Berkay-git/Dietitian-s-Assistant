@@ -181,9 +181,9 @@ def _create_cover_page(client, option, weight_raw, bodyfat_raw, adherence_raw):
     ax.axis('off')
 
     # Header bar
-    ax.axhspan(0.88, 1.0, color='#1A1A2E')
+    ax.axhspan(0.88, 1.0, color="#FFFFFF")
     ax.text(0.5, 0.94, "Client Progress Report", fontsize=22, fontweight='bold',
-            color='white', ha='center', va='center', transform=ax.transAxes)
+            color="#1A1A2E", ha='center', va='center', transform=ax.transAxes)
 
     # Client info
     y = 0.84
@@ -201,7 +201,7 @@ def _create_cover_page(client, option, weight_raw, bodyfat_raw, adherence_raw):
     y = 0.68
     ax.text(0.08, y, "Summary Statistics", fontsize=14, fontweight='bold',
             color='#1A1A2E', transform=ax.transAxes)
-    y -= 0.01
+    y -= 0.05 
 
     metrics_summary = []
     if weight_raw:
