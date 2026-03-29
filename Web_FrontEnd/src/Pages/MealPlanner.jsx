@@ -101,8 +101,8 @@ function AddMealModal({ isOpen, onClose, onAdd }) {
 
   const styles = {
     overlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
-    modal: { backgroundColor: 'white', padding: '20px', borderRadius: '8px', width: '400px', maxHeight: '80vh', display: 'flex', flexDirection: 'column', gap: '10px' },
-    list: { border: '1px solid #ddd', maxHeight: '150px', overflowY: 'auto', borderRadius: '4px' },
+    modal: { backgroundColor: 'white', padding: '32px', borderRadius: '12px', width: '640px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', gap: '16px' },
+    list: { border: '1px solid #ddd', maxHeight: '240px', overflowY: 'auto', borderRadius: '4px' },
     listItem: { padding: '8px', cursor: 'pointer', borderBottom: '1px solid #eee' },
     selectedItem: { backgroundColor: '#e6f7ff', fontWeight: 'bold' },
     input: { padding: '8px', width: '100%', boxSizing: 'border-box' }
