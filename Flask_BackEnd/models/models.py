@@ -21,6 +21,7 @@ class Client(db.Model):
     physical_details = db.relationship('PhysicalDetails', backref='client', cascade='all, delete-orphan')
     daily_meal_plans = db.relationship('DailyMealPlan', backref='client', cascade='all, delete-orphan')
     progress_snapshots = db.relationship('ClientProgressSnapshot', backref='client', cascade='all, delete-orphan')
+    meal_preferences = db.relationship('ClientMealPreference', backref='client', cascade='all, delete-orphan')
 
     def to_dict(self):
         return {
@@ -32,6 +33,7 @@ class Client(db.Model):
             'status': 'Active' if self.IsActive else 'Inactive'
         }
 
+
 class MedicalDetails(db.Model):
     __tablename__ = 'Medical_Details'
     
@@ -40,6 +42,7 @@ class MedicalDetails(db.Model):
     MedicalData = db.Column(db.String(64), nullable=False)
     RecordedBy = db.Column(db.String(64), nullable=False)
     CreatedAt = db.Column(db.Date, nullable=False)
+
 
 class Dietitian(db.Model):
     __tablename__ = 'Dietitian'
@@ -65,11 +68,12 @@ class Dietitian(db.Model):
             'type': self.SubscriptionType
         }
 
+
 class PhysicalDetails(db.Model):
     __tablename__ = 'Physical_Details'
     
     ClientID = db.Column(db.String(36), db.ForeignKey('Client.ClientID', ondelete='CASCADE'), primary_key=True)
-    PhysicalDetailID = db.Column(db.String(36), primary_key=True)
+    PhysicalDetailID = db.Column(db.Integer, primary_key=True, autoincrement=True)
     RecordedBy = db.Column(db.String(36), db.ForeignKey('Dietitian.DietitianID'))
     ActivityStatus = db.Column(db.Enum('SEDENTARY', 'LIGHT', 'MODERATE', 'HEAVY', 'ATHELETE'))
     Weight = db.Column(db.Numeric(5, 2))
@@ -77,50 +81,65 @@ class PhysicalDetails(db.Model):
     BodyFat = db.Column(db.Numeric(3, 1))
     MeasurementDate = db.Column(db.Date)
 
+
 class DailyMealPlan(db.Model):
     __tablename__ = 'DailyMealPlan'
     
-    MealPlanID = db.Column(db.String(36))
-    ClientID = db.Column(db.String(36), db.ForeignKey('Client.ClientID', ondelete='CASCADE'), primary_key=True)
-    PlanDate = db.Column(db.Date, primary_key=True)
+    MealPlanID = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    ClientID = db.Column(db.String(36), db.ForeignKey('Client.ClientID', ondelete='CASCADE'), nullable=False)
+    PlanDate = db.Column(db.Date, nullable=False)
     CreatedAt = db.Column(db.TIMESTAMP, default=datetime.utcnow)
+
+    __table_args__ = (
+        db.UniqueConstraint('ClientID', 'PlanDate', name='uq_client_plandate'),
+    )
     
     # Relationships
     meals = db.relationship('Meal', backref='daily_meal_plan', lazy="selectin", cascade='all, delete-orphan')
 
+
 class Meal(db.Model):
     __tablename__ = 'Meal'
     
-    MealID = db.Column(db.String(36), primary_key=True)
-    MealPlanID = db.Column(db.String(36), db.ForeignKey('DailyMealPlan.MealPlanID'), primary_key=True)
+    MealID = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    MealPlanID = db.Column(db.Integer, db.ForeignKey('DailyMealPlan.MealPlanID'), nullable=False)
     MealStart = db.Column(db.Time)
     MealEnd = db.Column(db.Time)
-    MealName = db.Column(db.String(30), nullable=False)
     
     # Relationships
     meal_items = db.relationship('MealItem', backref='meal', lazy="selectin", cascade='all, delete-orphan')
 
+
 class Item(db.Model):
     __tablename__ = 'Item'
     
-    ItemID = db.Column(db.String(36), primary_key=True)
+    ItemID = db.Column(db.Integer, primary_key=True, autoincrement=True)
     ItemName = db.Column(db.String(64), unique=True, nullable=False)
+    ItemCategory = db.Column(db.String(30))
     ItemProtein = db.Column(db.Float)
     ItemCarb = db.Column(db.Float)
     ItemFat = db.Column(db.Float)
-    ItemFiber = db.Column(db.Float)
-    ItemVitamins = db.Column(db.JSON)
-    ItemMinerals = db.Column(db.JSON)
-    ItemCategory = db.Column(db.String(30))
     
     # Relationships
     meal_items = db.relationship('MealItem', backref='item', lazy="selectin")
+    meal_preferences = db.relationship('ClientMealPreference', backref='item', lazy="selectin")
+
+    def to_dict(self):
+        return {
+            'item_id': self.ItemID,
+            'item_name': self.ItemName,
+            'item_category': self.ItemCategory,
+            'protein': self.ItemProtein,
+            'carb': self.ItemCarb,
+            'fat': self.ItemFat
+        }
+
 
 class MealItem(db.Model):
     __tablename__ = 'MealItem'
     
-    ItemID = db.Column(db.String(36), db.ForeignKey('Item.ItemID'), primary_key=True)
-    MealID = db.Column(db.String(36), db.ForeignKey('Meal.MealID'), primary_key=True)
+    ItemID = db.Column(db.Integer, db.ForeignKey('Item.ItemID'), primary_key=True)
+    MealID = db.Column(db.Integer, db.ForeignKey('Meal.MealID'), primary_key=True)
     ClientID = db.Column(db.String(36), db.ForeignKey('Client.ClientID'))
     ConsumeAmount = db.Column(db.Integer, nullable=False)
     canChange = db.Column(db.Boolean, nullable=False)
@@ -128,33 +147,35 @@ class MealItem(db.Model):
     ChangedItem = db.Column(db.JSON)
     isLLM = db.Column(db.Boolean)
 
+
 class LoginAttempts(db.Model):
     __tablename__ = 'LoginAttempts'
     
-    AttemptID = db.Column(db.String(36), primary_key=True)
-    Email = db.Column(db.String(64))    # review email
+    AttemptID = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    Email = db.Column(db.String(64))
     AttemptTime = db.Column(db.TIMESTAMP, default=datetime.utcnow)
     IPAddress = db.Column(db.String(64))
     IsSuccess = db.Column(db.Boolean, default=False)
 
+
 class ClientProgressSnapshot(db.Model):
     __tablename__ = 'ClientProgressSnapshot'
     
-    SnapshotID = db.Column(db.String(36), primary_key=True)
+    SnapshotID = db.Column(db.Integer, primary_key=True, autoincrement=True)
     ClientID = db.Column(db.String(36), db.ForeignKey('Client.ClientID', ondelete='CASCADE'), nullable=False)
-    Total = db.Column(db.Integer)
-    Adhered = db.Column(db.Integer)
+    SuccessAmount = db.Column(db.Numeric(5, 2))
+    Total = db.Column(db.Numeric(4, 1))
     AdherenceRate = db.Column(db.Numeric(5, 2))
     ProgressDate = db.Column(db.Date, nullable=False)
 
 
 class ClientMealPreference(db.Model):
-    __tablename__ = 'clientmealpreference'
+    __tablename__ = 'ClientMealPreference'
     
     PreferenceID = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    ClientID = db.Column(db.String(36), nullable=False)
+    ClientID = db.Column(db.String(36), db.ForeignKey('Client.ClientID', ondelete='CASCADE'), nullable=False)
     MealName = db.Column(db.String(20), nullable=False)
-    ItemID = db.Column(db.String(36), nullable=False)
+    ItemID = db.Column(db.Integer, db.ForeignKey('Item.ItemID', ondelete='CASCADE'), nullable=False)
     ItemName = db.Column(db.String(100))
     Score = db.Column(db.Integer, nullable=False, default=50)
     SelectionCount = db.Column(db.Integer, nullable=False, default=0)
@@ -166,6 +187,7 @@ class ClientMealPreference(db.Model):
             'client_id': self.ClientID,
             'meal_name': self.MealName,
             'item_id': self.ItemID,
+            'item_name': self.ItemName,
             'score': self.Score,
             'selection_count': self.SelectionCount,
             'rejection_count': self.RejectionCount
