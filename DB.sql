@@ -1,8 +1,8 @@
 -- Schemayı oluştur
 create DATABASE dietitian_assistant; USE dietitian_assistant;
 
--- Name / Email / DOB  = SHA-256 Hashing, Tüm Name email ve DOB'ler hashlenmiş olarak tutulacaktır.
--- Password = bcrypt 
+-- Email / DOB  = SHA-256 Hashing, Tüm email ve DOB'ler hashlenmiş olarak tutulacaktır.
+-- Password = bcrypt
 
 -- Client Tablosu
 CREATE TABLE Client (
@@ -38,7 +38,7 @@ CREATE TABLE Medical_Details(
 -- Dietitian Tablosu
 CREATE TABLE Dietitian (
     DietitianID VARCHAR(36) PRIMARY KEY, -- UUID
-    Email VARCHAR(64) UNIQUE NOT NULL,
+    Email VARCHAR(64) UNIQUE NOT NULL, 
     Password VARCHAR(60) NOT NULL,
     Name VARCHAR(64) NOT NULL,
     
@@ -55,7 +55,7 @@ CREATE TABLE Dietitian (
 -- Weak Entity Physical_Details (Client'a bağımlı) Tablosu
 CREATE TABLE Physical_Details (
     ClientID VARCHAR(36), -- Weak entity'nin sahibi
-    PhysicalDetailID VARCHAR(36), -- Weak entity'nin kendi partial key'i
+    PhysicalDetailID INT NOT NULL AUTO_INCREMENT, -- Weak entity'nin kendi partial key'i
     RecordedBy VARCHAR(36), -- Hangi diyetisyen tarafından recordlandı (ID'si)  ???? GEREKLI ?? GEREKSIZ ???
     
     ActivityStatus ENUM('SEDENTARY','LIGHT','MODERATE','HEAVY','ATHELETE'),
@@ -64,7 +64,7 @@ CREATE TABLE Physical_Details (
 	BodyFat DECIMAL(3,1), -- 0.00 - 99.9%  (Mantıken 100% yağ oranı olamaz amk)
     MeasurementDate DATE, -- Ölçüm tarihi (Raporlama için önemli)
     
-    PRIMARY KEY (ClientID, PhysicalDetailID),
+    PRIMARY KEY (PhysicalDetailID, ClientID),
     FOREIGN KEY (ClientID) REFERENCES Client(ClientID) ON DELETE CASCADE,
     FOREIGN KEY (RecordedBy) REFERENCES Dietitian(DietitianID)
 );
@@ -72,13 +72,14 @@ CREATE TABLE Physical_Details (
 
 -- Tüm o günlük planı 
 CREATE TABLE DailyMealPlan(
-	MealPlanID VARCHAR(36) UNIQUE NOT NULL, -- UUID
-    ClientID VARCHAR(36),
+	MealPlanID INT NOT NULL AUTO_INCREMENT,
+    ClientID VARCHAR(36), -- UUID
     
     PlanDate DATE, -- 07/12/2025
     CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     
-    PRIMARY KEY (ClientID,PlanDate),
+    PRIMARY KEY (MealPlanID),
+    UNIQUE KEY uq_client_plandate (ClientID, PlanDate),
     FOREIGN KEY (ClientID) REFERENCES Client(ClientID) ON DELETE CASCADE,
     
     -- Indexes
@@ -89,12 +90,12 @@ CREATE TABLE DailyMealPlan(
 
 -- Plan içindeki bir adet meal (09:00 - 11:00 Kahvaltı)
 CREATE TABLE Meal(
-	MealID VARCHAR(36),
-    MealPlanID VARCHAR(36),
+	MealID INT NOT NULL AUTO_INCREMENT,
+    MealPlanID INT NOT NULL,
     MealStart TIME,  -- 09:00
     MealEnd TIME,  -- 11:00
     
-    PRIMARY KEY (MealID,MealPlanID),
+    PRIMARY KEY (MealID),
     FOREIGN KEY (MealPlanID) REFERENCES DailyMealPlan(MealPlanID),
     
     -- Indexes
@@ -104,23 +105,19 @@ CREATE TABLE Meal(
 
 -- Meal içine yerleştirilecek itemlar listesi/tablosu
 CREATE TABLE Item(
-	ItemID VARCHAR(36) PRIMARY KEY,
+	ItemID INT PRIMARY KEY AUTO_INCREMENT,
     ItemName VARCHAR(64) UNIQUE NOT NULL,  -- Her eşyadan 1 tane olmak zorunda, 10 tane Banana değeri olamaz
-    
+    ItemCategory VARCHAR(30) DEFAULT NULL,
     ItemProtein FLOAT,  -- gram cinsinden hepsi
     ItemCarb FLOAT,
-    ItemFat FLOAT,
-    ItemFiber FLOAT,
-    ItemVitamins JSON,  -- {"vitaminC": 85, "vitaminD": 12, "vitaminB12": 0. 5} mg cinsinden // Ya da başka birim de olur IU
-    ItemMinerals JSON   -- {"iron": 2.1, "calcium": 150, "zinc": 1.2}  mg cinsinden 
-    -- Mineralleri ve vitaminleri kullanarak bir raporlama veya analiz yapmıcaksak ayrı bir tablo açmak gereksiz. Sadece diyetisyen eşyayı koyarken ekrana yerleştirmek / bilgilendirmek için 
+    ItemFat FLOAT
 );
 
 
 -- Meal içindeki itemları görmek / Feedback ile takip etmek
 CREATE TABLE MealItem(
-	ItemID VARCHAR(36),
-    MealID VARCHAR(36),
+	ItemID INT NOT NULL,
+    MealID INT,
     ClientID VARCHAR(36),  -- Performans için burada denormalization düşündüm. Çoğu şey client-merkezli olduğu için her şeyde clientID olması performansımızı çok artırıcak
     
     ConsumeAmount INT NOT NULL, -- 80 gr / 150 gr 
@@ -144,7 +141,7 @@ CREATE TABLE MealItem(
 
 -- Security için (Özellikle de Brute Force engellemesi için)
 CREATE TABLE LoginAttempts (
-	AttemptID VARCHAR(36) PRIMARY KEY, -- UUID
+	AttemptID INT AUTO_INCREMENT PRIMARY KEY, -- UUID
     Email VARCHAR(64),
     AttemptTime TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     IPAddress VARCHAR(64),
@@ -157,11 +154,11 @@ CREATE TABLE LoginAttempts (
 );
 
 CREATE TABLE ClientProgressSnapshot (
-    SnapshotID    CHAR(36) PRIMARY KEY,
+    SnapshotID    INT AUTO_INCREMENT PRIMARY KEY,
     ClientID      CHAR(36) NOT NULL,
 
-    Weight        DECIMAL(5,2),
-    BodyFat       DECIMAL(4,1),
+    SuccessAmount	       DECIMAL(5,2), 
+    Total       DECIMAL(4,1),
     AdherenceRate DECIMAL(5,2),   -- e.g. 87.50 (%)
 
     ProgressDate DATE NOT NULL,
@@ -173,6 +170,18 @@ CREATE TABLE ClientProgressSnapshot (
     INDEX idx_snapshot_client_date (ClientID, ProgressDate)
 );
 
+CREATE TABLE ClientMealPreference (
+    PreferenceID INT NOT NULL AUTO_INCREMENT,
+    ClientID VARCHAR(36) NOT NULL,
+    MealName VARCHAR(20) NOT NULL,
+    ItemID INT NOT NULL,
+    ItemName VARCHAR(100),
+    Score INT NOT NULL DEFAULT 50,
+    SelectionCount INT NOT NULL DEFAULT 0,
+    RejectionCount INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (PreferenceID),
 
-SELECT * FROM loginattempts;
-TRUNCATE TABLE loginattempts;
+
+    FOREIGN KEY (ClientID) REFERENCES Client(ClientID) ON DELETE CASCADE,
+    FOREIGN KEY (ItemID) REFERENCES Item(ItemID) ON DELETE CASCADE
+);
