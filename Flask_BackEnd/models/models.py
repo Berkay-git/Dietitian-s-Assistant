@@ -105,6 +105,7 @@ class Meal(db.Model):
     MealPlanID = db.Column(db.Integer, db.ForeignKey('DailyMealPlan.MealPlanID'), nullable=False)
     MealStart = db.Column(db.Time)
     MealEnd = db.Column(db.Time)
+    MealName = db.Column(db.String(30), nullable=False)
     
     # Relationships
     meal_items = db.relationship('MealItem', backref='meal', lazy="selectin", cascade='all, delete-orphan')

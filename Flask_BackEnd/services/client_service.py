@@ -41,7 +41,6 @@ def create_client(dietitian_id, data):
         # We check if these fields exist in data, else use None/Defaults
         new_physical = PhysicalDetails(
             ClientID=new_client_id,
-            PhysicalDetailID=str(uuid.uuid4()),
             RecordedBy=dietitian_id,
             Weight=data.get('weight'),
             Height=data.get('height'),

@@ -18,13 +18,12 @@ def create_meal_plan(data):
             db.session.flush()
 
         # B. Create Plan
-        new_plan_id = str(uuid.uuid4())
         new_plan = DailyMealPlan(
-            MealPlanID=new_plan_id,
             ClientID=client_id,
             PlanDate=plan_date_str 
         )
         db.session.add(new_plan)
+        db.session.flush()
 
         # C. Loop Meals
         for m in meals_data:
@@ -36,15 +35,14 @@ def create_meal_plan(data):
                     start_time = times[0].strip()
                     end_time = times[1].strip()
 
-            new_meal_id = str(uuid.uuid4())
             new_meal = Meal(
-                MealID=new_meal_id,
-                MealPlanID=new_plan_id,
+                MealPlanID=new_plan.MealPlanID,
                 MealName=m.get('title'),
                 MealStart=start_time,
                 MealEnd=end_time
             )
             db.session.add(new_meal)
+            db.session.flush()
 
             # D. Loop Items
             for i in m.get('items', []):
@@ -55,9 +53,7 @@ def create_meal_plan(data):
                 if existing_item:
                     item_id = existing_item.ItemID
                 else:
-                    item_id = str(uuid.uuid4())
                     new_item = Item(
-                        ItemID=item_id,
                         ItemName=i['name'],
                         # ItemCalories removed as per your request
                         ItemProtein=i.get('protein'),
@@ -69,7 +65,7 @@ def create_meal_plan(data):
 
                 # Link Item
                 new_meal_item = MealItem(
-                    MealID=new_meal_id,
+                    MealID=new_meal.MealID,
                     ItemID=item_id,
                     ClientID=client_id,
                     ConsumeAmount=i.get('amount'),
