@@ -94,6 +94,7 @@ CREATE TABLE Meal(
     MealPlanID INT NOT NULL,
     MealStart TIME,  -- 09:00
     MealEnd TIME,  -- 11:00
+	MealName VARCHAR(30) NOT NULL,
     
     PRIMARY KEY (MealID),
     FOREIGN KEY (MealPlanID) REFERENCES DailyMealPlan(MealPlanID),
