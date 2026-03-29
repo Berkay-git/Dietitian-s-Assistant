@@ -152,7 +152,6 @@ def get_mealitems_by_clientid(client_id, plan_date=None):
                 'protein': round(item['ItemProtein'] * (meal_item.ConsumeAmount / 100), 1),
                 'carb': round(item['ItemCarb'] * (meal_item.ConsumeAmount / 100), 1),
                 'fat': round(item['ItemFat'] * (meal_item.ConsumeAmount / 100), 1),
-                'fiber': round(item['ItemFiber'] * (meal_item.ConsumeAmount / 100), 1) if item['ItemFiber'] else 0
             })
         
         return meal_items_data

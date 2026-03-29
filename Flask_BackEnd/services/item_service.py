@@ -20,9 +20,6 @@ def get_item_by_id(item_id):
             'ItemProtein': float(item.ItemProtein) if item.ItemProtein else 0,
             'ItemCarb': float(item.ItemCarb) if item.ItemCarb else 0,
             'ItemFat': float(item.ItemFat) if item.ItemFat else 0,
-            'ItemFiber': float(item.ItemFiber) if item.ItemFiber else 0,
-            'ItemVitamins': item.ItemVitamins,
-            'ItemMinerals': item.ItemMinerals,
             'ItemCategory': item.ItemCategory
         }
     except Exception as e:
