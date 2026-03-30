@@ -158,8 +158,8 @@ CREATE TABLE ClientProgressSnapshot (
     SnapshotID    INT AUTO_INCREMENT PRIMARY KEY,
     ClientID      CHAR(36) NOT NULL,
 
-    SuccessAmount	       DECIMAL(5,2), 
-    Total       DECIMAL(4,1),
+    SuccessAmount	     INT NOT NULL, 
+    Total       INT NOT NULL,
     AdherenceRate DECIMAL(5,2),   -- e.g. 87.50 (%)
 
     ProgressDate DATE NOT NULL,
