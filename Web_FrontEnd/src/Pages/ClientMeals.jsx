@@ -15,23 +15,22 @@ const getMinutesFromTime = (timeStr) => {
 
 // --- HELPER: Format the text such that it prints ex: 100g Honey when viewing client meal on web.
 const formatChangedItemText = (rawText) => {
-  if (!rawText) return '';
-  
-  // delete quotes (if any)
-  let cleanText = rawText.replace(/"/g, '').trim(); 
+  if (!rawText) return [];
 
-  // split and rearrange
-  if (cleanText.includes('-')) {
-    const parts = cleanText.split('-');
-    const itemName = parts[0].trim();
-    const itemAmount = parts[1].trim();
-    
-    // final rearrangement
-    return `${itemAmount}g ${itemName}`;
-  }
-  
-  // if no "-" directly return
-  return cleanText;
+  let cleanText = rawText.replace(/"/g, '').trim();
+
+  // Split multiple items first
+  const items = cleanText.split(",");
+
+  return items.map(item => {
+    const parts = item.split("-");
+    if (parts.length < 2) return item.trim();
+
+    const name = parts[0].trim();
+    const amount = parts[1].trim();
+
+    return `${amount}g ${name}`;
+  });
 };
 
 export default function ClientMeals() {
@@ -171,44 +170,51 @@ export default function ClientMeals() {
                                         </div>
 
                                         {/* New Modified Item */}
-                                        <div style={{ color: '#333', fontWeight: '500', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                          <span>↳ {formattedNewItem}</span>
+                                        <div style={{ color: '#333', fontWeight: '500', marginTop: '2px' }}>
+                                          
+                                          {formattedNewItem.map((subItem, idx) => (
+                                          <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                            <span>↳ {subItem}</span>
 
-                                          {/* The Modifier Label (Just one this time!) */}
-                                          <span style={{ fontSize: '0.8em', color: strikeColor, fontWeight: 'bold' }}>{modifierLabel}</span>
+                                            {idx === 0 && (
+                                              <>
+                                                <span style={{ fontSize: '0.8em', color: strikeColor, fontWeight: 'bold' }}>
+                                                  {modifierLabel}
+                                                </span>
 
-                                          {/* The Instant Tooltip Wrapper */}
-                                          <div className="instant-tooltip-container">
-                                            {/* The (i) Icon */}
-                                            <span
-                                              style={{
-                                                color: '#888',
-                                                border: '1px solid #ccc',
-                                                borderRadius: '50%',
-                                                width: '16px',
-                                                height: '16px',
-                                                display: 'inline-flex',
-                                                justifyContent: 'center',
-                                                alignItems: 'center',
-                                                fontSize: '10px',
-                                                fontWeight: 'bold',
-                                                backgroundColor: '#f9f9f9'
-                                              }}
-                                            >
-                                              i
-                                            </span>
+                                                  <div className="instant-tooltip-container">
+                                                    <span style={{
+                                                      color: '#888',
+                                                      border: '1px solid #ccc',
+                                                      borderRadius: '50%',
+                                                      width: '16px',
+                                                      height: '16px',
+                                                      display: 'inline-flex',
+                                                      justifyContent: 'center',
+                                                      alignItems: 'center',
+                                                      fontSize: '10px',
+                                                      fontWeight: 'bold',
+                                                      backgroundColor: '#f9f9f9'
+                                                    }}>
+                                                      i
+                                                    </span>
 
-                                            {/* The Hidden Instant Box */}
-                                            <div className="instant-tooltip-box">
-                                              <div style={{ fontWeight: 'bold', borderBottom: '1px solid #555', paddingBottom: '3px', marginBottom: '3px' }}>
-                                                Estimated Macros
-                                              </div>
-                                              <div>kcal: {item.newKcal ?? '0'}</div>
-                                              <div>protein: {item.newProtein ?? '0'}g</div>
-                                              <div>carbs: {item.newCarbs ?? '0'}g</div>
-                                              <div>fat: {item.newFat ?? '0'}g</div>
+                                                    <div className="instant-tooltip-box">
+                                                      <div style={{ fontWeight: 'bold', borderBottom: '1px solid #555', paddingBottom: '3px', marginBottom: '3px' }}>
+                                                        Estimated Macros
+                                                      </div>
+                                                      <div>kcal: {item.newKcal ?? '0'}</div>
+                                                      <div>protein: {item.newProtein ?? '0'}g</div>
+                                                      <div>carbs: {item.newCarbs ?? '0'}g</div>
+                                                      <div>fat: {item.newFat ?? '0'}g</div>
+                                                    </div>
+                                                  </div>
+                                                </>
+                                              )}
+
                                             </div>
-                                          </div>
+                                          ))}
+
                                         </div>
                                       </li>
                                     );

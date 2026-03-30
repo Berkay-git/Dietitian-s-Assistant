@@ -392,12 +392,24 @@ def give_feedback_on_mealitem_manually(client_id, meal_id, item_id, changedItem,
 
         # CASE 3: legacy string (senin şu anki bug)
         elif isinstance(changedItem, str):
-            # örnek: "Banana - 100g"
-            selected_name = changedItem.split(" - ")[0].strip()
+            selected_item_ids = []
 
-            selected_item = Item.query.filter_by(ItemName=selected_name).first()
-            if selected_item:
-                selected_item_id = selected_item.ItemID
+            # Split multiple items
+            items = changedItem.split(",")
+
+            for item_str in items:
+                # Handle formats like "banana-100" OR "banana - 100g"
+                name_part = item_str.split("-")[0].strip()
+
+                selected_item = Item.query.filter_by(ItemName=name_part).first()
+                if selected_item:
+                    selected_item_ids.append(selected_item.ItemID)
+
+            # If only one item, keep old behavior
+            if len(selected_item_ids) == 1:
+                selected_item_id = selected_item_ids[0]
+            else:
+                selected_item_id = selected_item_ids  # 🔥 now supports multiple
 
         
 
