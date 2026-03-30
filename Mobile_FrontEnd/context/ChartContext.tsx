@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import axios from 'axios';
+import { API_URL } from '../config/ipconfig';  // API_URL imported from config/ipconfig.ts
 
 export interface ChartDataPoint {
   date: string;
@@ -16,7 +17,6 @@ interface ChartContextType {
 
 const ChartContext = createContext<ChartContextType | undefined>(undefined);
 
-const API_URL = 'http://10.0.2.2:5000';
 
 const METRIC_MAP: Record<string, string> = {
   'Weight':    'weight',
@@ -45,7 +45,7 @@ export const ChartProvider = ({ children }: { children: ReactNode }) => {
       const mappedMetric = METRIC_MAP[metric] ?? metric.toLowerCase();
       const mappedDuration = DURATION_MAP[duration] ?? duration.toLowerCase();
 
-      const response = await axios.get(`${API_URL}/api/dietitian/progress-data`, {
+      const response = await axios.get(`${API_URL}/progress-data`, {
         params: { client_id: clientId, metric: mappedMetric, duration: mappedDuration },  // Sending the parameters as arguments
       });
 

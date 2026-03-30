@@ -1,3 +1,4 @@
+import { API_URL } from '../config/ipconfig'; // API_URL imported from config/ipconfig.ts
 export interface AvailableItem {
   itemID: string;
   itemName: string;
@@ -21,7 +22,7 @@ export const ItemProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       setLoading(true);
       const response = await fetch(
-        "http://10.0.2.2:5000/api/dietitian/dropdown_items"
+        `${API_URL}/dropdown_items`
       );
 
       const data = await response.json();

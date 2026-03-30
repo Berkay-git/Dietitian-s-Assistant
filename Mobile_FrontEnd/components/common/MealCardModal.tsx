@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { mealCardModalStyles as styles } from '../../styles/screens/MealCardModalStyles';
 import FeedbackModal from './FeedbackModal';
 import { useItems } from "@/context/ItemContext";
+import { API_URL } from '../../config/ipconfig';  // API_URL imported from config/ipconfig.ts
 import { MealItem, useMeals } from '@/context/MealsContext';
 
 interface MealDetailModalProps {
@@ -117,7 +118,7 @@ export default function MealDetailModal({
 
     try {
       //  Backend'e istek gönder
-      const response = await fetch('http://10.0.2.2:5000/api/dietitian/alternative', {
+      const response = await fetch(`${API_URL}/alternative`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -178,7 +179,7 @@ export default function MealDetailModal({
 
   try {
     // Backend'e kabul edilen LLM önerisini gönder
-    const response = await fetch('http://10.0.2.2:5000/api/dietitian/update_alternative', {
+    const response = await fetch(`${API_URL}/update_alternative`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -253,7 +254,7 @@ export default function MealDetailModal({
 
     try {
       // Aynı endpoint'i tekrar çağır
-      const response = await fetch('http://10.0.2.2:5000/api/dietitian/alternative', {
+      const response = await fetch(`${API_URL}/alternative`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -343,7 +344,7 @@ export default function MealDetailModal({
       
       console.log('Sending feedback to backend:', feedbackData);
 
-      const response = await fetch('http://10.0.2.2:5000/api/dietitian/client_feedback', {
+      const response = await fetch(`${API_URL}/client_feedback`, {
         method: 'PATCH',
         headers: { 
           'Content-Type': 'application/json'

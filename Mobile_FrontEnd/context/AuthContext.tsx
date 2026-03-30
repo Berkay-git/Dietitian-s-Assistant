@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_URL } from '../config/ipconfig';  // API_URL imported from config/ipconfig.ts
 
 interface User {
   user_id: string;
@@ -27,7 +28,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setLoading(true);
     try {
       // API call to backend
-      const response = await fetch('http://10.0.2.2:5000/api/dietitian/auth', {
+      const response = await fetch(`${API_URL}/auth`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password, user_type: userType })

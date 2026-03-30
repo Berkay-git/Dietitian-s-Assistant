@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import axios from 'axios'; // npm install axios
+import { API_URL } from '../config/ipconfig';  // API_URL imported from config/ipconfig.ts
 
 export interface MealItem {
   itemID: string;
@@ -64,7 +65,6 @@ export const MealsProvider = ({ children }: { children: ReactNode }) => {
   const [error, setError] = useState<string | null>(null);
   const [lastFetchParams, setLastFetchParams] = useState<{ clientId: string; planDate?: string } | null>(null);
 
-  const API_URL = 'http://10.0.2.2:5000'; // Backend IP'nizi buraya yazın
 
   // ===================== SORT HELPERS (EKLENDI) =====================
   const timeToMinutes = (t: string) => {
@@ -97,7 +97,7 @@ export const MealsProvider = ({ children }: { children: ReactNode }) => {
       setLastFetchParams({ clientId, planDate });
 
       // Build URL with query parameters
-      let url = `${API_URL}/api/dietitian/meals?client_id=${clientId}`;
+      let url = `${API_URL}/meals?client_id=${clientId}`;
       if (planDate) {
         url += `&plan_date=${planDate}`;
       }
