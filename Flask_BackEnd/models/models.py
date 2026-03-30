@@ -164,8 +164,8 @@ class ClientProgressSnapshot(db.Model):
     
     SnapshotID = db.Column(db.Integer, primary_key=True, autoincrement=True)
     ClientID = db.Column(db.String(36), db.ForeignKey('Client.ClientID', ondelete='CASCADE'), nullable=False)
-    SuccessAmount = db.Column(db.Numeric(5, 2))
-    Total = db.Column(db.Numeric(4, 1))
+    SuccessAmount = db.Column(db.Integer, nullable=False, default=0)
+    Total = db.Column(db.Integer, nullable=False, default=0)
     AdherenceRate = db.Column(db.Numeric(5, 2))
     ProgressDate = db.Column(db.Date, nullable=False)
 
