@@ -166,7 +166,6 @@ class AuthService:
     def log_login_attempt(email, ip_address, is_success):
         try:
             attempt = LoginAttempts(
-                AttemptID=str(uuid.uuid4()),
                 Email=email,
                 IPAddress=ip_address,
                 IsSuccess=is_success,

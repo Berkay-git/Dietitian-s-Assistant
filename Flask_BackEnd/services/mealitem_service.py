@@ -79,6 +79,67 @@ JSON FORMAT:
 
 previous_requested_itemList = []
 
+def format_changed_item_for_db(changed_item):
+    """
+    Frontend'den gelen changed_item'i DB formatına çevirir.
+    
+    Kabul edilen input örnekleri:
+    1) [{"name": "Kiwi", "item_id": "9", "portion": 100}]
+    2) {"name": "Kiwi", "item_id": "9", "portion": 100}
+    3) "Kiwi - 100g"
+    4) "Kiwi - 100g, Banana - 80g"
+    
+    DB'ye yazılacak format:
+    "Kiwi - 100g, Banana - 80g"
+    """
+    if not changed_item:
+        return None
+
+    # String geldiyse önce JSON mı diye dene
+    if isinstance(changed_item, str):
+        changed_item = changed_item.strip()
+
+        # Zaten eski doğru string formatındaysa aynen bırak
+        if " - " in changed_item and "[" not in changed_item and "{" not in changed_item:
+            return changed_item
+
+        # JSON string olabilir
+        try:
+            changed_item = json.loads(changed_item)
+        except Exception:
+            return changed_item  # saçma bir şey geldiyse bozmayalım
+
+    # Tek obje geldiyse listeye çevir
+    if isinstance(changed_item, dict):
+        changed_item = [changed_item]
+
+    # Liste geldiyse DB stringine çevir
+    if isinstance(changed_item, list):
+        formatted_items = []
+
+        for item in changed_item:
+            if not isinstance(item, dict):
+                continue
+
+            name = str(item.get("name", "")).strip()
+            portion = item.get("portion")
+
+            if not name or portion in [None, ""]:
+                continue
+
+            try:
+                portion = int(float(portion))
+            except Exception:
+                continue
+
+            formatted_items.append(f"{name} - {portion}")
+
+        return ", ".join(formatted_items) if formatted_items else None
+
+    return None
+
+
+
 
 def get_mealitems_by_clientid(client_id, plan_date=None):
     """
@@ -253,7 +314,40 @@ def get_meal_items_by_mealid(meal_id):
         print(f"Error in get_meal_items_by_mealid: {str(e)}")
         return None
     
-    
+
+def parse_changed_item_with_ids(changed_item_text):
+    if not changed_item_text:
+        return []
+
+    result = []
+    items_list = changed_item_text.split(', ')
+
+    for item_str in items_list:
+        parts = item_str.split(' - ')
+        if len(parts) != 2:
+            continue
+
+        name = parts[0].strip()
+        portion_str = parts[1].strip().replace('g', '')
+
+        try:
+            portion = int(portion_str)
+        except ValueError:
+            continue
+
+        db_item = Item.query.filter_by(ItemName=name).first()
+
+        result.append({
+            "item_id": db_item.ItemID if db_item else None,
+            "name": name,
+            "portion": portion
+        })
+
+    return result
+
+
+
+
 def give_feedback_on_mealitem_manually(client_id, meal_id, item_id, changedItem, is_followed):
     """
     Manually give feedback on a meal item (hand-entered feedback)
@@ -311,9 +405,10 @@ def give_feedback_on_mealitem_manually(client_id, meal_id, item_id, changedItem,
         # It will not be overwritten of an itemID so we can track what changed with what.
         # UI should be designed to show the previous and new item if changedItem is not null.
         # Update the meal item with manual feedback
+        formatted_changed_item = format_changed_item_for_db(changedItem)
         meal_item.isFollowed = is_followed
-        meal_item.ChangedItem = changedItem if changedItem else None
-        meal_item.isLLM = 0  # Always 0 for manual feedback 
+        meal_item.ChangedItem = formatted_changed_item
+        meal_item.isLLM = 0
         
         # Commit changes to database
         db.session.commit()
@@ -426,10 +521,9 @@ def give_feedback_on_mealitem_via_LLM(client_id, meal_id, item_id, accepted_item
         # Create a formatted string with both name and portion
         changed_item_text = f"{recommended_food.get('name', 'Unknown')} - {recommended_food.get('portion', 'Unknown portion')}"
         
-        # Update for LLM suggestion
-        meal_item.ChangedItem = changed_item_text   #+ "g"  #Sonuna Gram ekle
-        meal_item.isFollowed = 0  # Always 0 for LLM changes
-        meal_item.isLLM = 1  # Always 1 for LLM suggestions
+        meal_item.ChangedItem = changed_item_text
+        meal_item.isFollowed = 0
+        meal_item.isLLM = 1
         
         # Commit changes to database
         db.session.commit()
