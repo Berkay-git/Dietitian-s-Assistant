@@ -19,7 +19,7 @@ from services.physical_details_service import get_progress_data, create_pdf_repo
 import services.client_service as client_service# web için, böyle importlamak lazim yoksa çalışmıyor.
 import services.meal_service as meal_service# web için, böyle importlamayınca çalışmıyor. (from ... import *) olmuyor.
 from services.preference_service import get_meal_fruit_recommendations, get_meal_fruit_recommendations_from_meal_id
-
+from services.progress_snapshot_service import update_adherence_rate
 
 dietitian_bp = Blueprint('dietitian', __name__)
 
@@ -359,6 +359,9 @@ def give_Feedback():
             changedItem=changed_item,
             is_followed=is_followed,
         )
+
+        #Update adherence rate each time feedback is given
+        update_adherence_rate(client_id,is_followed)
         
         if success:
             return jsonify({
@@ -613,7 +616,6 @@ def get_available_items():
         return jsonify({'error': str(e)}), 500
 
 
-
 from flask import jsonify 
 from models.models import ClientMealPreference # Table model
 
@@ -640,3 +642,88 @@ def get_client_warnings(client_id):
     except Exception as e:
         print(f"Warning Route Error: {e}")
         return jsonify({"status": "error", "error": str(e)}), 500
+
+# YENİ EKLENDİ: Danışanın tüm ölçüm geçmişini liste halinde döndüren rota
+@dietitian_bp.route('/client-measurements/<client_id>', methods=['GET'])
+def get_client_measurements(client_id):
+    try:
+        measurements = PhysicalDetails.query.filter_by(ClientID=client_id).all()
+        
+        if not measurements:
+            return jsonify([]), 200
+            
+        # Veritabanındaki kısa kelimeleri, frontend için uzun şık kelimelere geri çeviriyoruz
+        activity_reverse_map = {
+            "SEDENTARY": "Sedentary (Little to no exercise)",
+            "LIGHT": "Light (Exercise 1-3 days/week)",
+            "MODERATE": "Moderate (Exercise 3-5 days/week)",
+            "HEAVY": "Heavy (Exercise 6-7 days/week)",
+            "ATHELETE": "Athlete (Physical job or 2x training)" # DB'deki yazım hatasına (ATHELETE) uygun
+        }
+
+        result = []
+        for m in measurements:
+            # Doğru tarih kolonunu kullanıyoruz (MeasurementDate)
+            record_date = m.MeasurementDate
+            
+            if hasattr(record_date, 'strftime'):
+                record_date = record_date.strftime('%Y-%m-%d')
+                
+            result.append({
+                'id': m.PhysicalDetailID,
+                'weight': float(m.Weight) if m.Weight else 0,
+                'height': float(m.Height) if m.Height else 0,
+                'bodyfat': float(m.BodyFat) if m.BodyFat else 0,
+                'activity': activity_reverse_map.get(m.ActivityStatus, 'Not Set'),
+                'date': str(record_date)
+            })
+            
+        result = sorted(result, key=lambda x: x['date'], reverse=True)
+        
+        return jsonify(result), 200
+
+    except Exception as e:
+        print(f"Measurement Route Error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+# YENİ EKLENDİ: Veritabanına YENİ bir ölçüm satırı (Geçmiş) ekler
+@dietitian_bp.route('/client-measurements', methods=['POST'])
+def add_client_measurement():
+    try:
+        data = request.get_json()
+        
+        
+
+        # Frontend'den gelen uzun açıklamalı yazıyı, veritabanının istediği kısa ENUM'a çeviriyoruz
+        activity_map = {
+            "Sedentary (Little to no exercise)": "SEDENTARY",
+            "Light (Exercise 1-3 days/week)": "LIGHT",
+            "Moderate (Exercise 3-5 days/week)": "MODERATE",
+            "Heavy (Exercise 6-7 days/week)": "HEAVY",
+            "Athlete (Physical job or 2x training)": "ATHELETE"
+        }
+        
+        db_activity = activity_map.get(data.get('activity'), "SEDENTARY")
+        
+        # Yeni fiziksel detay objesi (PhysicalDetailID otomatik eklenecek)
+        new_record = PhysicalDetails(
+            ClientID=data.get('client_id'),
+            RecordedBy=data.get('dietitian_id'),
+            Weight=data.get('weight'),
+            Height=data.get('height'),
+            BodyFat=data.get('bodyfat'),
+            ActivityStatus=db_activity,
+            MeasurementDate=data.get('date') # Doğru kolon adı
+        
+        )
+        
+        db.session.add(new_record)
+        db.session.commit()
+        
+        return jsonify({'message': 'New measurement added to history successfully!'}), 201
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Add Measurement Error: {e}")
+        return jsonify({'error': str(e)}), 500

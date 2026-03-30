@@ -8,6 +8,7 @@ import ClientDetails from './Pages/ClientDetails';
 import EditClient from './Pages/EditClient';
 import MealPlanner from './Pages/MealPlanner';
 import ClientMeals from './Pages/ClientMeals';
+import ClientProgress from './Pages/ClientProgress'; //new
 
 export default function App() {
   return (
@@ -21,6 +22,7 @@ export default function App() {
         <Route path="/edit-client" element={<EditClient />} />
         <Route path="/meal-planner" element={<MealPlanner />} />
         <Route path="/client-meals" element={<ClientMeals />} />
+        <Route path="/client-progress" element={<ClientProgress />} /> //new
       </Routes>
     </BrowserRouter>
   );

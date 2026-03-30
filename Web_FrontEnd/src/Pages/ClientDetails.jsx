@@ -132,6 +132,19 @@ export default function ClientDetails() {
               <span style={styles.sidebarText}>Create Plan</span>
             </button>
 
+            {/* YENİ EKLENDİ: Track Progress Butonu */}
+            <button
+              style={{...styles.sidebarButton, ...styles.trackProgressSidebar, opacity: isInactive ? 0.5 : 1, cursor: isInactive ? 'not-allowed' : 'pointer'}}
+              onClick={() => {
+                  if(!isInactive) navigate('/client-progress', { state: { client: clientData } });
+              }}
+              disabled={isInactive}
+            >
+              <span style={styles.sidebarEmoji}>📈</span>
+              <span style={styles.sidebarText}>Track Progress</span>
+            </button>
+            {/* ----------------------------------- */}
+
             <button
               style={{...styles.sidebarButton, ...styles.downloadReportSidebar, opacity: isInactive ? 0.5 : 1, cursor: isInactive ? 'not-allowed' : 'pointer'}}
               onClick={() => {
@@ -226,6 +239,10 @@ const styles = {
   sidebarText: { color: '#fff', fontSize: '11px', fontWeight: '700', textAlign: 'center', lineHeight: '1.3' },
   viewPlanSidebar: { backgroundColor: '#007AFF', boxShadow: '0 4px 10px rgba(0,122,255,0.3)' },
   createPlanSidebar: { backgroundColor: '#28a745', boxShadow: '0 4px 10px rgba(40,167,69,0.3)' },
+  
+  // YENİ EKLENDİ: Track Progress Buton Stili (Turuncu)
+  trackProgressSidebar: { backgroundColor: '#ff9800', boxShadow: '0 4px 10px rgba(255,152,0,0.3)' },
+  
   downloadReportSidebar: { backgroundColor: '#6f42c1', boxShadow: '0 4px 10px rgba(111,66,193,0.3)' },
 
   profileCard: { position: 'relative', flex: 1, backgroundColor: '#fff', borderRadius: '20px', padding: '30px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column', alignItems: 'center', boxSizing: 'border-box' },
