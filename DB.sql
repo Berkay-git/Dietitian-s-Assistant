@@ -108,7 +108,7 @@ CREATE TABLE Meal(
 CREATE TABLE Item(
 	ItemID INT PRIMARY KEY AUTO_INCREMENT,
     ItemName VARCHAR(255) UNIQUE NOT NULL,  -- Her eşyadan 1 tane olmak zorunda, 10 tane Banana değeri olamaz
-    ItemCategory VARCHAR(30) DEFAULT NULL,
+    ItemCategory VARCHAR(100) DEFAULT NULL,
     ItemProtein FLOAT,  -- gram cinsinden hepsi
     ItemCarb FLOAT,
     ItemFat FLOAT
