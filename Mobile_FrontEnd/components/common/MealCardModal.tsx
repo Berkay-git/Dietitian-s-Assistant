@@ -401,14 +401,14 @@ export default function MealDetailModal({
               <Text style={styles.value}>{timeRange}</Text>
             </View>
 
-            {/* Total Calories */}
-            <View style={styles.infoRow}>
+            {/* Total Calories - hidden for exchange view */}
+            {/* <View style={styles.infoRow}>
               <Text style={styles.label}>Total Calories:</Text>
               <Text style={styles.value}>{totalCalories} kcal</Text>
-            </View>
+            </View> */}
 
-            {/* Total Macros */}
-            <View style={styles.totalMacroBox}>
+            {/* Total Macros - hidden for exchange view */}
+            {/* <View style={styles.totalMacroBox}>
               <View style={styles.macroItem}>
                 <Text style={styles.macroLabel}>Protein</Text>
                 <Text style={styles.macroValue}>{totalProtein}g</Text>
@@ -421,7 +421,7 @@ export default function MealDetailModal({
                 <Text style={styles.macroLabel}>Fat</Text>
                 <Text style={styles.macroValue}>{totalFat}g</Text>
               </View>
-            </View>
+            </View> */}
 
             {/* Status */}
             <View style={styles.infoRow}>
@@ -490,16 +490,16 @@ export default function MealDetailModal({
                             {item.name}
                           </Text>
                         </View>
-                        <Text style={[styles.itemCalories, { textDecorationLine: 'line-through' }]}>
+                        {/* <Text style={[styles.itemCalories, { textDecorationLine: 'line-through' }]}>
                           {item.calories} kcal
-                        </Text>
+                        </Text> */}
                       </View>
-                      
+
                       <Text style={[styles.itemPortion, { textDecorationLine: 'line-through' }]}>
                         {gramsToExchange(item.name, item.portion)}
                       </Text>
-                      
-                      <View style={styles.macroRow}>
+
+                      {/* <View style={styles.macroRow}>
                         <Text style={[styles.macroText, { textDecorationLine: 'line-through' }]}>
                           P: {item.protein}g
                         </Text>
@@ -509,7 +509,7 @@ export default function MealDetailModal({
                         <Text style={[styles.macroText, { textDecorationLine: 'line-through' }]}>
                           F: {item.fat}g
                         </Text>
-                      </View>
+                      </View> */}
                     </View>
                   )}
 
@@ -528,16 +528,16 @@ export default function MealDetailModal({
                               </View>
                             )}
                           </View>
-                          <Text style={[styles.itemCalories, { color: '#4CAF50' }]}>
+                          {/* <Text style={[styles.itemCalories, { color: '#4CAF50' }]}>
                             {changedItem.calories} kcal
-                          </Text>
+                          </Text> */}
                         </View>
-                        
+
                         <Text style={[styles.itemPortion, { color: '#4CAF50' }]}>
                           {gramsToExchange(changedItem.name, changedItem.portion)}
                         </Text>
-                        
-                        <View style={styles.macroRow}>
+
+                        {/* <View style={styles.macroRow}>
                           <Text style={[styles.macroText, { color: '#4CAF50' }]}>
                             P: {changedItem.protein}g
                           </Text>
@@ -547,7 +547,7 @@ export default function MealDetailModal({
                           <Text style={[styles.macroText, { color: '#4CAF50' }]}>
                             F: {changedItem.fat}g
                           </Text>
-                        </View>
+                        </View> */}
                       </View>
                     ))
                   ) : (
@@ -573,16 +573,16 @@ export default function MealDetailModal({
                             </View>
                           )}
                         </View>
-                        <Text style={styles.itemCalories}>{displayedItem.calories} kcal</Text>
+                        {/* <Text style={styles.itemCalories}>{displayedItem.calories} kcal</Text> */}
                       </View>
-                      
+
                       <Text style={styles.itemPortion}>{gramsToExchange(displayedItem.name, displayedItem.portion)}</Text>
-                      
-                      <View style={styles.macroRow}>
+
+                      {/* <View style={styles.macroRow}>
                         <Text style={styles.macroText}>P: {displayedItem.protein}g</Text>
                         <Text style={styles.macroText}>C: {displayedItem.carb}g</Text>
                         <Text style={styles.macroText}>F: {displayedItem.fat}g</Text>
-                      </View>
+                      </View> */}
                     </>
                   )}
                   
@@ -629,13 +629,13 @@ export default function MealDetailModal({
                           <Text style={styles.llmTitle}>Alternative Suggestion</Text>
                           <Text style={styles.llmItemName}>{llmResult.name}</Text>
                           <Text style={styles.llmPortion}>
-                            {gramsToExchange(llmResult.name, llmResult.portion)} · {llmResult.calories} kcal
+                            {gramsToExchange(llmResult.name, llmResult.portion)}
                           </Text>
-                          <View style={styles.macroRow}>
+                          {/* <View style={styles.macroRow}>
                             <Text>P: {llmResult.protein}g</Text>
                             <Text>C: {llmResult.carb}g</Text>
                             <Text>F: {llmResult.fat}g</Text>
-                          </View>
+                          </View> */}
                           <View style={{ flexDirection: "row", marginTop: 12, justifyContent: 'space-between', gap: 10 }}> 
                             <TouchableOpacity
                               style={[styles.itemAlternativeBtn, {flex: 1}]}

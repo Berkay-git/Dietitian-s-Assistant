@@ -51,7 +51,7 @@ export default function MealCard({
           {mealType} ({formatTime(timeRange)})
         </Text>
         <View style={styles.caloriesBox}>
-          <Text style={styles.caloriesText}>{totalCalories}</Text>
+          {/* <Text style={styles.caloriesText}>{totalCalories}</Text> */}
           {isCompleted ? (
             <Text style={styles.checkmark}>✓</Text>
           ) : (
@@ -70,7 +70,7 @@ export default function MealCard({
             <Text style={styles.itemName}>{item.name}</Text>
             <Text style={styles.itemPortion}>{gramsToExchange(item.name, item.portion)}</Text>
           </View>
-          <Text style={styles.itemCalories}>{item.calories}</Text>
+          {/* <Text style={styles.itemCalories}>{item.calories}</Text> */}
         </View>
       ))}
 
