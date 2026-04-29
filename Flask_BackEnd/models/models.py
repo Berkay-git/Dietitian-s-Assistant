@@ -116,7 +116,7 @@ class Item(db.Model):
     
     ItemID = db.Column(db.Integer, primary_key=True, autoincrement=True)
     ItemName = db.Column(db.String(255), unique=True, nullable=False)
-    ItemCategory = db.Column(db.String(30))
+    ItemCategory = db.Column(db.String(100))
     ItemProtein = db.Column(db.Float)
     ItemCarb = db.Column(db.Float)
     ItemFat = db.Column(db.Float)
