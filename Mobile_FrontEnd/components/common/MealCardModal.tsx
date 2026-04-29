@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { mealCardModalStyles as styles } from '../../styles/screens/MealCardModalStyles';
 import FeedbackModal from './FeedbackModal';
 import { useItems } from "@/context/ItemContext";
+import { gramsToExchange } from './ExchangeMap';
 import { API_URL } from '../../config/ipconfig';  // API_URL imported from config/ipconfig.ts
 import { MealItem, useMeals } from '@/context/MealsContext';
 
@@ -495,7 +496,7 @@ export default function MealDetailModal({
                       </View>
                       
                       <Text style={[styles.itemPortion, { textDecorationLine: 'line-through' }]}>
-                        {item.portion}
+                        {gramsToExchange(item.name, item.portion)}
                       </Text>
                       
                       <View style={styles.macroRow}>
@@ -533,7 +534,7 @@ export default function MealDetailModal({
                         </View>
                         
                         <Text style={[styles.itemPortion, { color: '#4CAF50' }]}>
-                          {changedItem.portion}
+                          {gramsToExchange(changedItem.name, changedItem.portion)}
                         </Text>
                         
                         <View style={styles.macroRow}>
@@ -575,7 +576,7 @@ export default function MealDetailModal({
                         <Text style={styles.itemCalories}>{displayedItem.calories} kcal</Text>
                       </View>
                       
-                      <Text style={styles.itemPortion}>{displayedItem.portion}</Text>
+                      <Text style={styles.itemPortion}>{gramsToExchange(displayedItem.name, displayedItem.portion)}</Text>
                       
                       <View style={styles.macroRow}>
                         <Text style={styles.macroText}>P: {displayedItem.protein}g</Text>
@@ -628,7 +629,7 @@ export default function MealDetailModal({
                           <Text style={styles.llmTitle}>Alternative Suggestion</Text>
                           <Text style={styles.llmItemName}>{llmResult.name}</Text>
                           <Text style={styles.llmPortion}>
-                            {llmResult.portion} · {llmResult.calories} kcal
+                            {gramsToExchange(llmResult.name, llmResult.portion)} · {llmResult.calories} kcal
                           </Text>
                           <View style={styles.macroRow}>
                             <Text>P: {llmResult.protein}g</Text>

@@ -175,7 +175,7 @@ def getMeals():
         meal_plan = get_daily_meal_plan(client_id, plan_date)
         
         if not meal_plan:
-            return jsonify({'error': 'Bu tarih için meal plan bulunamadı'}), 404
+            return jsonify({'error': 'No plans found for this date, Your dietitian may not have created a plan yet.'}), 404
         
         return jsonify({
             'success': True,

@@ -115,7 +115,7 @@ class Item(db.Model):
     __tablename__ = 'Item'
     
     ItemID = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    ItemName = db.Column(db.String(64), unique=True, nullable=False)
+    ItemName = db.Column(db.String(255), unique=True, nullable=False)
     ItemCategory = db.Column(db.String(30))
     ItemProtein = db.Column(db.Float)
     ItemCarb = db.Column(db.Float)

@@ -1,5 +1,6 @@
 import { View, Text, TouchableOpacity } from 'react-native';
 import { styles } from '../../styles/screens/MealCardStyles';
+import { gramsToExchange } from './ExchangeMap';
 
 interface MealItem {
   name: string;
@@ -67,7 +68,7 @@ export default function MealCard({
         <View key={index} style={styles.itemRow}>
           <View style={styles.itemInfo}>
             <Text style={styles.itemName}>{item.name}</Text>
-            <Text style={styles.itemPortion}>{item.portion}</Text>
+            <Text style={styles.itemPortion}>{gramsToExchange(item.name, item.portion)}</Text>
           </View>
           <Text style={styles.itemCalories}>{item.calories}</Text>
         </View>

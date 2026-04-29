@@ -1,12 +1,11 @@
-import { View, Text, ScrollView, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, ActivityIndicator, RefreshControl, TouchableOpacity } from 'react-native';
 import { useState, useEffect } from 'react';
 import MealCard from '../../components/common/MealCard';
 import MealDetailModal from '../../components/common/MealCardModal';
 import { mealsStyles } from '../../styles/screens/MealsPageStyles';
 import { useMeals } from '../../context/MealsContext';
 import { useAuth } from '../../context/AuthContext';
-import { calculateDailySummary } from "../../components/common/calculator";
-import CalorieSummary from "../../components/common/CalorieSummary";
+import ProgressSummary from "../../components/common/ProgressSummary";
 
 export default function Meals() {
   const [selectedMeal, setSelectedMeal] = useState<any>(null);
@@ -61,60 +60,38 @@ export default function Meals() {
 
   if (error && !dailyMealPlan) {
     return (
-      <View style={[mealsStyles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <Text style={{ color: 'red', fontSize: 16 }}>{error}</Text>
+      <View style={[mealsStyles.container, { justifyContent: 'center', alignItems: 'center', padding: 24 }]}>
+        <Text style={{ color: '#EF4444', fontSize: 16, marginBottom: 16, textAlign: 'center' }}>{error}</Text>
+        <TouchableOpacity
+          style={{ backgroundColor: '#007AFF', paddingVertical: 12, paddingHorizontal: 28, borderRadius: 10 }}
+          onPress={() => { if (user?.user_id) fetchMealPlan(user.user_id); }}
+        >
+          <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600' }}>Retry</Text>
+        </TouchableOpacity>
       </View>
     );
   }
 
   if (!dailyMealPlan) {
     return (
-      <View style={[mealsStyles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <Text style={{ fontSize: 16 }}>Meal plan bulunamadı</Text>
+      <View style={[mealsStyles.container, { justifyContent: 'center', alignItems: 'center', padding: 24 }]}>
+        <Text style={{ fontSize: 16, color: '#6B7280', marginBottom: 6, textAlign: 'center' }}>No plans found for this date</Text>
+        <Text style={{ fontSize: 13, color: '#9CA3AF', marginBottom: 18, textAlign: 'center' }}>Your dietitian may not have created a plan yet.</Text>
+        <TouchableOpacity
+          style={{ backgroundColor: '#007AFF', paddingVertical: 12, paddingHorizontal: 28, borderRadius: 10 }}
+          onPress={() => { if (user?.user_id) fetchMealPlan(user.user_id); }}
+        >
+          <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600' }}>Reload</Text>
+        </TouchableOpacity>
       </View>
     );
   }
 
-  const rawSummary = calculateDailySummary(
-    dailyMealPlan.meals,
-    dailyMealPlan.dailyTotals
-  );
-
-  const summary = {
-    calories: {
-      total: Math.round(rawSummary.calories.target),  
-      consumed: Math.round(rawSummary.calories.consumed),
-      remaining: Math.round(rawSummary.calories.remaining),
-    },
-    macros: {
-      carb: {
-        consumed: Math.round(rawSummary.macros.carb.consumed * 10) / 10,
-        target: Math.round(rawSummary.macros.carb.target * 10) / 10,
-      },
-      protein: {
-        consumed: Math.round(rawSummary.macros.protein.consumed * 10) / 10,
-        target: Math.round(rawSummary.macros.protein.target * 10) / 10,
-      },
-      fat: {
-        consumed: Math.round(rawSummary.macros.fat.consumed * 10) / 10,
-        target: Math.round(rawSummary.macros.fat.target * 10) / 10,
-      },
-    },
-  };
-
-
   return (
     <View style={mealsStyles.container}>
 
-      {/* Sabit Header */}
-      <CalorieSummary
-        calories={summary.calories}
-        macros={{
-          carb: summary.macros.carb,
-          protein: summary.macros.protein,
-          fat: summary.macros.fat,
-        }}
-      />
+      {/* Feedback Progress Bar */}
+      <ProgressSummary meals={dailyMealPlan.meals} />
 
       {/* Scrollable Meal Cards */}
       <ScrollView 

@@ -116,17 +116,19 @@ export const MealsProvider = ({ children }: { children: ReactNode }) => {
         setDailyMealPlan(sortedPlan);
         setError(null);
       } else {
-        setError('Meal plan alınamadı');
+        setError('Could not load meal plan');
       }
     } catch (err: any) {
       console.error('Error fetching meal plan:', err);
 
+      const serverMsg = err.response?.data?.error;
+
       if (err.response?.status === 404) {
-        setError('Bu tarih için meal plan bulunamadı');
+        setError(serverMsg || 'No plans found for this date');
       } else if (err.response?.status === 400) {
-        setError('Geçersiz istek');
+        setError(serverMsg || 'Invalid request');
       } else {
-        setError('Meal plan yüklenirken bir hata oluştu');
+        setError(serverMsg || 'An error occurred while loading the meal plan');
       }
 
       setDailyMealPlan(null);

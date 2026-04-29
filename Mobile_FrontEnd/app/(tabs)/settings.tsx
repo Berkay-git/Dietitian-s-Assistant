@@ -1,6 +1,5 @@
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, Alert } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
-import { router } from 'expo-router';
 import { settingsStyles as styles } from '../../styles/screens/SettingsPageStyles';
 
 export default function Settings() {
@@ -17,7 +16,6 @@ export default function Settings() {
           style: 'destructive',
           onPress: () => {
             logout();
-            router.replace('/login');
           },
         },
       ]

@@ -2,6 +2,7 @@ import { Modal, View, Text, TouchableOpacity, ScrollView, TextInput, Alert } fro
 import { useState, useEffect } from 'react';
 import { Picker } from '@react-native-picker/picker';
 import { feedbackModalStyles as styles } from '../../styles/screens/FeedbackModalStyles';
+import { gramsToExchange } from './ExchangeMap';
 
 interface MealItem {
   name: string;
@@ -204,7 +205,7 @@ export default function FeedbackModal({
             <View style={styles.mealInfoBox}>
               <Text style={styles.mealName}>{mealName}</Text>
               <Text style={styles.itemName}>{item.name}</Text>
-              <Text style={styles.itemPortion}>{item.portion}</Text>
+              <Text style={styles.itemPortion}>{gramsToExchange(item.name, item.portion)}</Text>
               <Text style={styles.itemCalories}>{item.calories} kcal</Text>
             </View>
 
@@ -275,7 +276,7 @@ export default function FeedbackModal({
                         {changedItemsList.map((addedItem) => (
                           <View key={addedItem.itemID} style={styles.chip}>
                             <Text style={styles.chipText}>
-                              {addedItem.itemName} ({addedItem.portion}g)
+                              {addedItem.itemName} ({gramsToExchange(addedItem.itemName, `${addedItem.portion}g`)})
                             </Text>
                             <TouchableOpacity 
                               onPress={() => handleRemoveItem(addedItem.itemID)}
