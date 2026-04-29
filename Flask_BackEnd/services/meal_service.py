@@ -118,36 +118,53 @@ def get_client_meal_plans(client_id):
 
 #--------------------------------------------------------------------
                     # --- NEW CODE: Calculate Macros for ChangedItem SPECIFICALLY FOR WEB SIDE, MOBILE SIDE WILL NOT USE IT.---
-                    new_kcal, new_pro, new_carb, new_fat = None, None, None, None
+                    # --- FIXED: Handle multiple changed items ---
+                    new_kcal, new_pro, new_carb, new_fat = 0, 0, 0, 0
 
                     if mi.ChangedItem:
-                        # 1. Clean the string (remove quotes and extra spaces)
                         clean_changed = str(mi.ChangedItem).replace('"', '').strip()
-                        
-                        # 2. Split into name and amount
-                        if '-' in clean_changed:
-                            parts = clean_changed.split('-')
-                            if len(parts) == 2:
-                                new_item_name = parts[0].strip()
-                                
-                                try:
-                                    new_item_amount = float(parts[1].strip())
-                                    
-                                    # 3. Look up the new item in the database 
-                                    # (Using ilike for case-insensitive matching)
-                                    new_db_item = Item.query.filter(Item.ItemName.ilike(new_item_name)).first()
-                                    
-                                    if new_db_item:
-                                        new_ratio = new_item_amount / 100.0
-                                        
-                                        # 4. Calculate macros for the new amount
-                                        new_pro = round((new_db_item.ItemProtein or 0) * new_ratio)
-                                        new_carb = round((new_db_item.ItemCarb or 0) * new_ratio)
-                                        new_fat = round((new_db_item.ItemFat or 0) * new_ratio)
-                                        
-                                        new_kcal = round((4 * new_pro) + (4 * new_carb) + (9 * new_fat))
-                                except Exception as e:
-                                    print(f"Error parsing modified item amount: {e}")
+
+                        # Split multiple items
+                        changed_items = clean_changed.split(",")
+
+                        for changed in changed_items:
+                            if '-' not in changed:
+                                continue
+
+                            parts = changed.split('-')
+                            if len(parts) != 2:
+                                continue
+
+                            new_item_name = parts[0].strip()
+
+                            try:
+                                new_item_amount = float(parts[1].strip())
+
+                                new_db_item = Item.query.filter(Item.ItemName.ilike(new_item_name)).first()
+
+                                if new_db_item:
+                                    ratio = new_item_amount / 100.0
+
+                                    pro = (new_db_item.ItemProtein or 0) * ratio
+                                    carb = (new_db_item.ItemCarb or 0) * ratio
+                                    fat = (new_db_item.ItemFat or 0) * ratio
+
+                                    kcal = (4 * pro) + (4 * carb) + (9 * fat)
+
+                                    # 🔥 ADD to totals
+                                    new_pro += pro
+                                    new_carb += carb
+                                    new_fat += fat
+                                    new_kcal += kcal
+
+                            except Exception as e:
+                                print(f"Error parsing modified item: {e}")
+
+                        # Round at the end
+                        new_pro = round(new_pro)
+                        new_carb = round(new_carb)
+                        new_fat = round(new_fat)
+                        new_kcal = round(new_kcal)
 #------------------------------------------
 
                     items_data.append({
