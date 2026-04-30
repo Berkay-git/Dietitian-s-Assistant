@@ -41,34 +41,23 @@ OUTPUT RULES:
 - Calories must be rounded to the nearest whole number.
 - Protein, carb, and fat must be rounded to one decimal place.
 
-FOOD NAME NORMALIZATION RULES:
-- The food name part of "recommended_food" must be treated as a strict identifier, not free text.
-- The food name must be a single, normalized string.
-- The food name must be written in Title Case (first letter of each word capitalized).
-- Do NOT include portion size, units, numbers, preparation methods, fat level, brand names, or descriptors in the food name.
-- Do NOT include parentheses, commas, hyphens, or additional explanations in the food name.
-- The food name must contain only letters and spaces.
-
-FOOD NAME FORMAT EXAMPLES:
-
-INVALID:
-- Cottage cheese
-- cottage Cheese
-- Cottage Cheese (100g)
-- Low Fat Cottage Cheese
-- Cottage cheese - 100g
-
-VALID:
-- Cottage Cheese
+CRITICAL FOOD NAME RULE:
+- You MUST pick a food from the CANDIDATE ITEMS list provided in the prompt.
+- The food name in "recommended_food" MUST be copied EXACTLY as it appears in the candidate list — character for character, including spaces, commas, parentheses, and Turkish characters.
+- Do NOT shorten, generalize, translate, or modify the name in any way.
+- Do NOT invent a food name that is not in the candidate list.
+- If the candidate list says "Hindi eti (derisiz), kemiksiz", you must use exactly "Hindi eti (derisiz), kemiksiz" — not "Hindi Eti" or "Turkey Meat".
+- If no candidate is suitable, set status to "no_alternative".
 
 STRING FORMAT RULE:
 - The "recommended_food" string must strictly follow this exact pattern:
-  "Food Name - Portion - Calories - Protein - Carb - Fat"
+  "Exact DB Name - Portion - Calories - Protein - Carb - Fat"
 - Use exactly one space before and after each hyphen.
+- Portion must be an integer in grams.
 
 FINAL CHECK RULE:
-- Before returning the final JSON, internally verify that the food name follows all normalization rules.
-- If the food name violates any rule, normalize it before outputting the JSON.
+- Before returning the final JSON, verify that the food name matches one of the candidate items EXACTLY.
+- If it does not match any candidate exactly, fix it or set status to "no_alternative".
 
 JSON FORMAT:
 {
@@ -646,6 +635,71 @@ def calculate_tdee(sex, age , weight , height, bodyfat_percentage , activity_sta
         return None
 
 
+def _prefilter_candidates(original_item_id, original_item, limit=12):
+    """
+    Prefilter DB items to find the most nutritionally similar candidates.
+    Scores items by calorie + macro similarity to the original, same food role preferred.
+    Returns top N candidates sorted by similarity score (best first).
+    """
+    try:
+        all_items = Item.query.all()
+        if not all_items:
+            return []
+
+        # Original item macros per 100g
+        orig_protein = original_item['ItemProtein'] or 0
+        orig_carb = original_item['ItemCarb'] or 0
+        orig_fat = original_item['ItemFat'] or 0
+        orig_cal = calculate_item_calories(orig_protein, orig_carb, orig_fat)
+
+        # Determine dominant macro role of original (protein/carb/fat source)
+        macros = {'protein': orig_protein, 'carb': orig_carb, 'fat': orig_fat}
+        dominant_role = max(macros, key=macros.get)
+
+        scored = []
+        for db_item in all_items:
+            # Skip the original item itself
+            if str(db_item.ItemID) == str(original_item_id):
+                continue
+
+            p = db_item.ItemProtein or 0
+            c = db_item.ItemCarb or 0
+            f = db_item.ItemFat or 0
+            cal = calculate_item_calories(p, c, f)
+
+            # Calorie similarity (closer = better, max 40 points)
+            cal_diff = abs(cal - orig_cal)
+            cal_score = max(0, 40 - (cal_diff / orig_cal * 40)) if orig_cal > 0 else 20
+
+            # Macro similarity (closer = better, max 40 points)
+            macro_diff = abs(p - orig_protein) + abs(c - orig_carb) + abs(f - orig_fat)
+            macro_total = orig_protein + orig_carb + orig_fat
+            macro_score = max(0, 40 - (macro_diff / macro_total * 40)) if macro_total > 0 else 20
+
+            # Food role bonus (same dominant macro = +20 points)
+            item_macros = {'protein': p, 'carb': c, 'fat': f}
+            item_role = max(item_macros, key=item_macros.get)
+            role_bonus = 20 if item_role == dominant_role else 0
+
+            total_score = cal_score + macro_score + role_bonus
+
+            scored.append({
+                'name': db_item.ItemName,
+                'cal_per_100g': round(cal, 1),
+                'protein': round(p, 1),
+                'carb': round(c, 1),
+                'fat': round(f, 1),
+                'score': round(total_score, 1),
+            })
+
+        # Sort by score descending, take top N
+        scored.sort(key=lambda x: x['score'], reverse=True)
+        return scored[:limit]
+
+    except Exception as e:
+        print(f"Error in _prefilter_candidates: {str(e)}")
+        return []
+
 
 def build_dynamic_prompt(client_id, meal_id, item_id):
     # Find the mealItem from DB which is gonna be changed  and get the details (Macros and calories)
@@ -768,12 +822,17 @@ def build_dynamic_prompt(client_id, meal_id, item_id):
         else:
             plan_goal = "Weight maintenance"
 
-        # 8. Filter the items in the DB between 5-15 (RETRIEVAL AUGMENTED GENERATION PROMPTING) and provide to LLM
+        # 8. Prefilter candidates from DB (RAG-style)
+        candidates = _prefilter_candidates(item_id, item, limit=12)
 
-        # 9. Get the Location of the User
+        if candidates:
+            candidates_text = "CANDIDATE ITEMS FROM DATABASE (pick the best one from this list):\n"
+            for c in candidates:
+                candidates_text += f"- {c['name']}: {c['cal_per_100g']} kcal/100g, P:{c['protein']}g C:{c['carb']}g F:{c['fat']}g per 100g\n"
+        else:
+            candidates_text = "No prefiltered candidates available. Suggest any suitable food."
 
-        
-        # 10. Build the dynamic prompt
+        # 9. Build the dynamic prompt
         dynamic_prompt = f"""
 Plan Goal:
 Person is working on {plan_goal}
@@ -781,13 +840,15 @@ Person is working on {plan_goal}
 Person's medical status:
 {medical_info}
 
-Macro values ​​of replacement meal:
+Macro values of replacement meal:
 {portion_calories} kcal, {protein} g protein, {carb} g carbohydrates, {fat} g fat
 
 Meal to replace:
 {item['ItemName']} ({meal_item.ConsumeAmount}g)
 
-Suggest the most suitable single meal and its portion based on this information.
+{candidates_text}
+
+Pick the single best alternative from the candidate list above. Adjust portion to match the original meal's calorie and macro profile as closely as possible.
 """
         
         return dynamic_prompt

@@ -8,6 +8,7 @@ interface ItemContextType {
   items: AvailableItem[];
   loading: boolean;
   fetchItems: () => Promise<void>;
+  ensureItems: () => Promise<void>;
 }
 
 import React, { createContext, useContext, useEffect, useState } from "react";
@@ -40,13 +41,20 @@ export const ItemProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  //  App açıldığında 1 kere çek
+  // Fetch on mount, and expose fetchItems so consumers can retry
   useEffect(() => {
     fetchItems();
   }, []);
 
+  // Also expose a way to ensure items are loaded (re-fetches if empty)
+  const ensureItems = async () => {
+    if (items.length === 0 && !loading) {
+      await fetchItems();
+    }
+  };
+
   return (
-    <ItemContext.Provider value={{ items, loading, fetchItems }}>
+    <ItemContext.Provider value={{ items, loading, fetchItems, ensureItems }}>
       {children}
     </ItemContext.Provider>
   );

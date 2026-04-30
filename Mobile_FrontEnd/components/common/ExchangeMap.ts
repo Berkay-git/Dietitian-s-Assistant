@@ -191,27 +191,121 @@ export const EXCHANGE_MAP: Record<string, ExchangeCategory> = {
   },
 };
 
-// Flat lookup: item name -> entry (built once at import time)
-const _flatMap = new Map<string, ExchangeEntry>();
+// ── Synonyms: DB names often differ from exchange names ──
+const SYNONYMS: Record<string, string> = {
+  'piliç': 'tavuk',
+  'pilic': 'tavuk',
+  'pilav': 'pirinç pilavı',
+  'yogurt': 'yoğurt',
+  'sut': 'süt',
+  'peynir': 'beyaz peynir',
+  'yumurta': 'yumurta(tavuk)',
+  'ekmek': 'beyaz, buğday',
+};
+
+// Words to strip — they add description but don't help matching
+const NOISE = new Set([
+  'eti', 'derisiz', 'kemiksiz', 'tam', 'yağlı', 'yarım', 'az',
+  'taze', 'çiğ', 'pişmiş', 'haşlanmış', 'ızgara', 'fırında',
+  'küçük', 'orta', 'büyük', 'boy', 'adet', 'dilim',
+  'ile', 've', 'bir', 'yarı', 'sade', 'doğal',
+]);
+
+// Flat lookup: item name -> { entry, keywords }
+interface IndexedEntry {
+  entry: ExchangeEntry;
+  keywords: string[];
+  original: string;
+}
+
+const _index: IndexedEntry[] = [];
 for (const category of Object.values(EXCHANGE_MAP)) {
   for (const [name, entry] of Object.entries(category)) {
-    _flatMap.set(name.toLowerCase(), entry);
+    _index.push({
+      entry,
+      keywords: _tokenize(name),
+      original: name.toLowerCase(),
+    });
   }
+}
+
+function _normalize(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[(),\/\-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function _tokenize(s: string): string[] {
+  return _normalize(s)
+    .split(' ')
+    .filter(w => w.length > 1 && !NOISE.has(w));
+}
+
+function _applySynonyms(tokens: string[]): string[] {
+  return tokens.map(t => SYNONYMS[t] ?? t);
+}
+
+// Find the best matching entry for a given item name
+function _findEntry(itemName: string): ExchangeEntry | null {
+  const normalized = _normalize(itemName);
+
+  // 1. Exact match
+  const exact = _index.find(e => e.original === normalized);
+  if (exact) return exact.entry;
+
+  // 2. Fuzzy keyword match
+  const inputTokens = _applySynonyms(_tokenize(itemName));
+  if (inputTokens.length === 0) return null;
+
+  let bestScore = 0;
+  let bestEntry: ExchangeEntry | null = null;
+
+  for (const candidate of _index) {
+    const candidateTokens = candidate.keywords;
+
+    // Count how many input tokens appear in (or partially match) the candidate
+    let matches = 0;
+    for (const inputWord of inputTokens) {
+      for (const candWord of candidateTokens) {
+        // Full word match or one contains the other (handles "göğüs" matching "göğüs fileto")
+        if (inputWord === candWord || candWord.includes(inputWord) || inputWord.includes(candWord)) {
+          matches++;
+          break;
+        }
+      }
+    }
+
+    if (matches === 0) continue;
+
+    // Score = matched keywords / max(input length, candidate length)
+    // Rewards high overlap, penalizes big mismatches
+    const score = matches / Math.max(inputTokens.length, candidateTokens.length);
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestEntry = candidate.entry;
+    }
+  }
+
+  // Require at least 40% keyword overlap to consider it a match
+  return bestScore >= 0.4 ? bestEntry : null;
 }
 
 /**
  * Convert a gram-based portion string (e.g. "100g") into an exchange description.
- * Returns the exchange string if a match is found, otherwise returns the original portion.
+ * Uses fuzzy keyword matching + synonyms to find the closest ExchangeMap entry.
  *
- * Example: gramsToExchange("Elma", "120g") => "1 orta boy"
- *          gramsToExchange("Elma", "240g") => "2 orta boy"
+ * Example: gramsToExchange("Piliç eti, göğüs, derisiz", "60g") => "0.5 küçük boy"
+ *          gramsToExchange("Elma", "120g") => "1 orta boy"
  *          gramsToExchange("UnknownFood", "50g") => "50g"
  */
 export function gramsToExchange(itemName: string, portion: string): string {
   const grams = parseFloat(portion.replace('g', ''));
   if (isNaN(grams)) return portion;
 
-  const entry = _flatMap.get(itemName.toLowerCase());
+  const entry = _findEntry(itemName);
   if (!entry) return portion;
 
   // Determine the base gram value for 1 exchange
@@ -229,4 +323,24 @@ export function gramsToExchange(itemName: string, portion: string): string {
   const display = rounded % 1 === 0 ? rounded.toFixed(0) : rounded.toFixed(1);
 
   return `${display} ${entry.measure}`;
+}
+
+/**
+ * Get exchange info for an item (measure name + grams per unit).
+ * Returns null if no match found — caller should fall back to grams.
+ *
+ * Example: getExchangeInfo("Tavuk göğüs fileto")
+ *   => { measure: "küçük boy", gramsPerUnit: 120 }  (rawGrams 30, ratio 0.25 → 30/0.25=120g per 1 unit)
+ */
+export function getExchangeInfo(itemName: string): { measure: string; gramsPerUnit: number } | null {
+  const entry = _findEntry(itemName);
+  if (!entry) return null;
+
+  const baseGrams = entry.netGrams ?? entry.rawGrams ?? entry.cookedGrams ?? entry.grossGrams;
+  if (!baseGrams || baseGrams === 0 || entry.ratio === 0) return null;
+
+  // gramsPerUnit = how many grams is 1 "measure" unit
+  const gramsPerUnit = baseGrams / entry.ratio;
+
+  return { measure: entry.measure, gramsPerUnit };
 }

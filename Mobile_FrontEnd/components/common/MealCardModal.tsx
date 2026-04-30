@@ -62,7 +62,7 @@ export default function MealDetailModal({
     };
   }>>({});
 
-  const { items: availableItems, loading } = useItems();
+  const { items: availableItems, loading, ensureItems } = useItems();
   const { refreshMealPlan } = useMeals();
 
   const getFeedbackStatus = (
@@ -313,6 +313,7 @@ export default function MealDetailModal({
       return;
     }
     setSelectedFeedbackItem(item);
+    ensureItems();
     setFeedbackModalVisible(true);
   };
 
@@ -448,21 +449,26 @@ export default function MealDetailModal({
                 fat: number;
               }> = [];
               
-              if (item.changedItem) {
-                const itemsArray = item.changedItem.split(';');
-                itemsArray.forEach((itemStr: string) => {
-                  const parts = itemStr.split(',');
-                  if (parts.length === 6) {
+              if (item.changedItem && typeof item.changedItem === 'string') {
+                // DB format: "Food Name - 120" (last " - " separates name from portion)
+                // Food names can contain commas: "Piliç eti, göğüs, derisiz - 120"
+                const raw = item.changedItem;
+                const dashIdx = raw.lastIndexOf(' - ');
+                if (dashIdx > 0) {
+                  const name = raw.substring(0, dashIdx).trim();
+                  const portionStr = raw.substring(dashIdx + 3).trim().replace('g', '');
+                  const portionNum = parseFloat(portionStr);
+                  if (name && !isNaN(portionNum)) {
                     changedItems.push({
-                      name: parts[0].trim(),
-                      portion: `${parts[1].trim()}g`,
-                      calories: parseFloat(parts[2]),
-                      protein: parseFloat(parts[3]),
-                      carb: parseFloat(parts[4]),
-                      fat: parseFloat(parts[5])
+                      name,
+                      portion: `${portionNum}g`,
+                      calories: 0,
+                      protein: 0,
+                      carb: 0,
+                      fat: 0
                     });
                   }
-                });
+                }
               }
               
               const hasChangedItem = changedItems.length > 0;
@@ -555,18 +561,23 @@ export default function MealDetailModal({
                       <View style={styles.itemHeader}>
                         <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' }}>
                           {acceptedAI ? (
-                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                              <Text style={[styles.itemName, { color: '#E53935', marginRight: 6, textDecorationLine: 'line-through' }]}>
-                                {acceptedAI.originalName}
-                              </Text>
-                              <Text style={[styles.itemName, { color: '#2E7D32' }]}>
-                                → {displayedItem.name}
+                            <View style={{ flex: 1 }}>
+                              <View style={{ opacity: 0.5, marginBottom: 6 }}>
+                                <Text style={[styles.itemName, { textDecorationLine: 'line-through' }]}>
+                                  {acceptedAI.originalName}
+                                </Text>
+                                <Text style={[styles.itemPortion, { textDecorationLine: 'line-through' }]}>
+                                  {gramsToExchange(item.name, item.portion)}
+                                </Text>
+                              </View>
+                              <Text style={[styles.itemName, { color: '#2E7D32', fontWeight: 'bold' }]}>
+                                ✓ {displayedItem.name}
                               </Text>
                             </View>
                           ) : (
                             <Text style={styles.itemName}>{item.name}</Text>
                           )}
-                          
+
                           {item.canChange && (
                             <View style={styles.changeableBadge}>
                               <Text style={styles.changeableBadgeText}>🔄</Text>
@@ -576,7 +587,9 @@ export default function MealDetailModal({
                         {/* <Text style={styles.itemCalories}>{displayedItem.calories} kcal</Text> */}
                       </View>
 
-                      <Text style={styles.itemPortion}>{gramsToExchange(displayedItem.name, displayedItem.portion)}</Text>
+                      <Text style={[styles.itemPortion, acceptedAI && { color: '#2E7D32' }]}>
+                        {gramsToExchange(displayedItem.name, displayedItem.portion)}
+                      </Text>
 
                       {/* <View style={styles.macroRow}>
                         <Text style={styles.macroText}>P: {displayedItem.protein}g</Text>

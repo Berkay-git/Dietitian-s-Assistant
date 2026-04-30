@@ -1,8 +1,7 @@
 import { Modal, View, Text, TouchableOpacity, ScrollView, TextInput, Alert } from 'react-native';
-import { useState, useEffect } from 'react';
-import { Picker } from '@react-native-picker/picker';
+import { useState, useEffect, useRef } from 'react';
 import { feedbackModalStyles as styles } from '../../styles/screens/FeedbackModalStyles';
-import { gramsToExchange } from './ExchangeMap';
+import { gramsToExchange, getExchangeInfo } from './ExchangeMap';
 
 interface MealItem {
   name: string;
@@ -57,6 +56,9 @@ export default function FeedbackModal({
   const [selectedItemID, setSelectedItemID] = useState<string>('');
   const [selectedItemName, setSelectedItemName] = useState<string>('');
   const [portion, setPortion] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const searchRef = useRef<TextInput>(null);
   
   // List of changed items
   const [changedItemsList, setChangedItemsList] = useState<ChangedFoodItem[]>([]);
@@ -69,6 +71,9 @@ export default function FeedbackModal({
       setSelectedItemName('');
       setPortion('');
       setChangedItemsList([]);
+      setSearchQuery('');
+      setDropdownOpen(false);
+      if (searchRef.current) searchRef.current.setNativeProps({ text: '' });
     }
   }, [visible]);
 
@@ -86,13 +91,21 @@ export default function FeedbackModal({
     }
   };
 
-  const handleItemSelection = (itemId: string) => {
+  const handleItemSelection = (itemId: string, itemName: string) => {
     setSelectedItemID(itemId);
-    const selectedItem = availableItems.find(i => i.itemID === itemId);
-    if (selectedItem) {
-      setSelectedItemName(selectedItem.itemName);
-    }
+    setSelectedItemName(itemName);
+    setSearchQuery(itemName);
+    setDropdownOpen(false);
+    setPortion('');
+    if (searchRef.current) searchRef.current.setNativeProps({ text: itemName });
   };
+
+  const filteredItems = searchQuery.length > 0
+    ? availableItems.filter(i => i.itemName.toLocaleLowerCase('tr-TR').includes(searchQuery.toLocaleLowerCase('tr-TR')))
+    : availableItems;
+
+  // Get exchange info for the currently selected item
+  const exchangeInfo = selectedItemName ? getExchangeInfo(selectedItemName) : null;
 
   const handleAddItem = () => {
     if (!selectedItemID || !selectedItemName) {
@@ -107,9 +120,14 @@ export default function FeedbackModal({
 
     const portionNum = parseFloat(portion);
     if (isNaN(portionNum) || portionNum <= 0) {
-      Alert.alert('Error', 'Please enter a valid portion amount (grams)');
+      Alert.alert('Error', 'Please enter a valid amount');
       return;
     }
+
+    // Convert exchange count to grams if exchange info exists
+    const gramsToSend = exchangeInfo
+      ? Math.round(portionNum * exchangeInfo.gramsPerUnit)
+      : portionNum;
 
     // Check if item already exists
     const existingItem = changedItemsList.find(i => i.itemID === selectedItemID);
@@ -118,15 +136,15 @@ export default function FeedbackModal({
       return;
     }
 
-    // Add to list
+    // Add to list (portion stored as grams for backend)
     const newItem: ChangedFoodItem = {
       itemID: selectedItemID,
       itemName: selectedItemName,
-      portion: portionNum,
+      portion: gramsToSend,
     };
 
     setChangedItemsList([...changedItemsList, newItem]);
-    
+
     // Reset fields
     setSelectedItemID('');
     setSelectedItemName('');
@@ -206,7 +224,7 @@ export default function FeedbackModal({
               <Text style={styles.mealName}>{mealName}</Text>
               <Text style={styles.itemName}>{item.name}</Text>
               <Text style={styles.itemPortion}>{gramsToExchange(item.name, item.portion)}</Text>
-              <Text style={styles.itemCalories}>{item.calories} kcal</Text>
+              {/* <Text style={styles.itemCalories}>{item.calories} kcal</Text> */}
             </View>
 
             <View style={styles.divider} />
@@ -290,30 +308,67 @@ export default function FeedbackModal({
                     </View>
                   )}
 
-                  {/* Item Dropdown */}
+                  {/* Item Search Dropdown */}
                   <Text style={styles.inputLabel}>Select Food Item:</Text>
-                  <View style={styles.pickerContainer}>
-                    <Picker
-                      selectedValue={selectedItemID}
-                      onValueChange={handleItemSelection}
-                      style={styles.picker}
-                    >
-                      <Picker.Item label="-- Select an item --" value="" />
-                      {availableItems.map((availableItem) => (
-                        <Picker.Item
-                          key={availableItem.itemID}
-                          label={availableItem.itemName}
-                          value={availableItem.itemID}
-                        />
-                      ))}
-                    </Picker>
-                  </View>
+                  <TextInput
+                    ref={searchRef}
+                    style={styles.textInput}
+                    placeholder="Search item..."
+                    onChangeText={(text) => {
+                      setSearchQuery(text);
+                      setDropdownOpen(true);
+                      if (!text) {
+                        setSelectedItemID('');
+                        setSelectedItemName('');
+                      }
+                    }}
+                    onFocus={() => setDropdownOpen(true)}
+                    autoCorrect={false}
+                    autoCapitalize="none"
+                    spellCheck={false}
+                  />
+                  {dropdownOpen && filteredItems.length > 0 && (
+                    <View style={{
+                      maxHeight: 150,
+                      borderWidth: 1,
+                      borderColor: '#E5E7EB',
+                      borderRadius: 8,
+                      backgroundColor: '#fff',
+                      marginBottom: 8,
+                    }}>
+                      <ScrollView nestedScrollEnabled keyboardShouldPersistTaps="handled">
+                        {filteredItems.map((availableItem) => (
+                          <TouchableOpacity
+                            key={availableItem.itemID}
+                            style={{
+                              paddingVertical: 10,
+                              paddingHorizontal: 12,
+                              borderBottomWidth: 1,
+                              borderBottomColor: '#F3F4F6',
+                              backgroundColor: selectedItemID === availableItem.itemID ? '#EFF6FF' : '#fff',
+                            }}
+                            onPress={() => handleItemSelection(availableItem.itemID, availableItem.itemName)}
+                          >
+                            <Text style={{
+                              fontSize: 14,
+                              color: selectedItemID === availableItem.itemID ? '#007AFF' : '#374151',
+                              fontWeight: selectedItemID === availableItem.itemID ? '600' : '400',
+                            }}>
+                              {availableItem.itemName}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  )}
 
                   {/* Portion Input */}
-                  <Text style={styles.inputLabel}>Portion (grams):</Text>
+                  <Text style={styles.inputLabel}>
+                    {exchangeInfo ? `Amount (${exchangeInfo.measure}):` : 'Portion (grams):'}
+                  </Text>
                   <TextInput
                     style={styles.textInput}
-                    placeholder="Enter amount in grams (e.g. 150)"
+                    placeholder={exchangeInfo ? `How many ${exchangeInfo.measure}? (e.g. 2)` : 'Firstly, you should select an item!'}
                     keyboardType="decimal-pad"
                     value={portion}
                     onChangeText={handlePortionChange}
